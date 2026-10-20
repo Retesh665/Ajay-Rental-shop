@@ -1,0 +1,50 @@
+* { box-sizing: border-box; }
+html, body, #root { margin: 0; min-width: 320px; min-height: 100%; }
+body { font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #f6f5f1; }
+button, input, select, textarea { font: inherit; }
+button { -webkit-tap-highlight-color: transparent; }
+.spin { animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* RentDesk application shell / left navigation */
+.app-shell{min-height:100vh;background:#F6F5F1}.app-content{min-height:100vh;margin-left:238px}.sidebar{position:fixed;left:0;top:0;bottom:0;width:238px;background:#1F4E36;color:#fff;z-index:50;display:flex;flex-direction:column;box-shadow:1px 0 10px rgba(0,0,0,.12)}.sidebar-brand{padding:22px 18px 18px;border-bottom:1px solid rgba(255,255,255,.12);display:flex;align-items:center;justify-content:space-between}.sidebar-brand strong{font-size:20px;display:block}.sidebar-brand span{font-size:11px;opacity:.72;display:block;margin-top:3px}.sidebar-nav{padding:12px 10px;display:flex;flex-direction:column;gap:4px}.sidebar-nav button{border:0;background:transparent;color:rgba(255,255,255,.84);display:flex;align-items:center;gap:11px;text-align:left;padding:11px 12px;border-radius:8px;cursor:pointer;font-weight:600;font-size:13px}.sidebar-nav button:hover{background:rgba(255,255,255,.09);color:#fff}.sidebar-nav button.active{background:#fff;color:#1F4E36}.sidebar-foot{margin-top:auto;padding:12px 10px 16px}.signout-button{width:100%;border:0;background:rgba(255,255,255,.08);color:#fff;display:flex;align-items:center;gap:11px;text-align:left;padding:11px 12px;border-radius:8px;cursor:pointer;font-weight:600;font-size:13px}.signout-button:hover{background:rgba(255,255,255,.15)}.sidebar-close{display:none!important;background:transparent!important;color:white!important;padding:4px!important}.mobile-topbar{display:none}.preview-note{margin:0 18px;padding:10px 12px;background:#FBF0DF;border:1px solid #E8C994;color:#704817;border-radius:0 0 8px 8px;font-size:12px}.screen-wrap{min-width:0}.sidebar-backdrop{display:none}
+@media(max-width:820px){.app-content{margin-left:0}.sidebar{transform:translateX(-100%);transition:transform .2s ease;width:250px}.sidebar.sidebar-open{transform:translateX(0)}.sidebar-backdrop{display:block;position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:40}.sidebar-close{display:flex!important}.mobile-topbar{height:58px;background:#1F4E36;color:#fff;display:flex;align-items:center;justify-content:space-between;padding:0 14px;position:sticky;top:0;z-index:30}.mobile-topbar button{border:0;background:transparent;color:#fff;display:flex;padding:6px;cursor:pointer}.mobile-topbar span{width:35px}.preview-note{margin:10px 10px 0;border-radius:8px}}
+
+/* Connection feedback: no changes to Dashboard or Notes components. */
+.rd-network-banner {margin: 10px 16px; padding: 10px 14px; border-radius: 8px; background: #fff2dc; border: 1px solid #edcb90; color: #674519; font-size: 13px; line-height: 1.45;}
+.rd-network-recovered {background: #eaf7ee; border-color: #a8d5b7; color: #24573a;}
+.rd-network-recovered button {background: transparent; border: 0; text-decoration: underline; color: inherit; cursor: pointer; margin-left: 8px;}
+
+/* Responsive layout safeguards. */
+html,body,#root,.app-shell,.app-content,.screen-wrap{max-width:100%;min-width:0}
+.screen-wrap{overflow-x:clip}
+.screen-wrap>div{min-width:0;max-width:100%}
+@media(max-width:600px){
+ .mobile-topbar{height:52px}
+ .rd-dashboard{padding:18px 12px!important}
+ .rd-dashboard .rd-range{max-width:100%;overflow-x:auto;scrollbar-width:thin}
+ .rd-dashboard .rd-range button{white-space:nowrap;flex-shrink:0}
+ .rd-dashboard .rd-period-stats,.rd-dashboard .rd-live-stats{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+ .rd-dashboard .rd-period-stats>*,.rd-dashboard .rd-live-stats>*{min-width:0;overflow-wrap:anywhere}
+ .rd-dashboard .rd-date-range{flex-wrap:wrap}
+ .rd-dashboard .rd-date-range input{max-width:calc(50% - 18px);min-width:0}
+ .rd-inventory .rd-machine-table{min-width:0!important;table-layout:fixed}
+ .rd-inventory .rd-machine-table th,.rd-inventory .rd-machine-table td{padding:9px 5px!important;overflow-wrap:anywhere;font-size:12px}
+ .rd-inventory .rd-machine-table th:nth-child(2),.rd-inventory .rd-machine-table td:nth-child(2){display:none}
+ .rd-inventory .rd-machine-table td button{white-space:normal;font-size:11px;padding:7px 5px}
+ .rd-inventory .rd-machine-filters{display:grid!important;grid-template-columns:1fr 1fr;gap:8px}
+ .rd-inventory .rd-machine-filters input{grid-column:1/-1;width:100%}
+ .rd-inventory .rd-machine-filters select{width:100%}
+ .rd-inventory .rd-inventory-heading{flex-wrap:wrap}
+ .rd-inventory .rd-inventory-heading>div:first-child{min-width:0;flex:1 1 170px}
+ .rd-inventory .rd-inventory-heading p{overflow-wrap:anywhere}
+ .screen-wrap input,.screen-wrap select,.screen-wrap textarea{max-width:100%}
+}
+
+/* Photo capture tiles fit within the customer form on mobile. */
+.rd-photo-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; width:100%; min-width:0; }
+.rd-photo-grid > * { min-width:0; overflow-wrap:anywhere; }
+@media (max-width: 650px) { .rd-photo-grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; } }
+@media (max-width: 360px) { .rd-photo-grid { grid-template-columns:minmax(0,1fr); } }
+
+.rd-screen-loading { padding: 24px; color: #567066; font-size: 14px; }
