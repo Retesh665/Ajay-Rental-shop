@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { AlertTriangle, Boxes, CheckCircle2, Wrench, IndianRupee, UserX, PackagePlus, Undo2, UserPlus } from "lucide-react";
 import { getDashboardStats } from "../lib/api.js";
-import { nowIST, isoDateIST, addDaysISO, istDateTimeToUTC } from "../lib/dates.js";
+import { isoDateIST, addDaysISO, istDateTimeToUTC } from "../lib/dates.js";
 
 const INK = "#1C2333";
 const INK_SOFT = "#4A5268";
@@ -48,7 +48,6 @@ function SectionLabel({ children }) {
 }
 
 function rangeToUTCBounds(range, customStart, customEnd) {
-  const now = nowIST();
   const todayISO = isoDateIST(new Date());
   if (range === "today") return { fromUTC: istDateTimeToUTC(todayISO, "00:00").toISOString(), toUTC: istDateTimeToUTC(todayISO, "23:59").toISOString() };
   if (range === "week") return { fromUTC: istDateTimeToUTC(addDaysISO(todayISO, -6), "00:00").toISOString(), toUTC: istDateTimeToUTC(todayISO, "23:59").toISOString() };
@@ -73,7 +72,6 @@ function dueLabel(dueDateISO) {
 
 export default function Dashboard({onCustomerAction}) {
   const [actionCustomer,setActionCustomer] = useState(null);
-  const now = nowIST();
   const [range, setRange] = useState("today");
   const [customStart, setCustomStart] = useState(addDaysISO(isoDateIST(new Date()), -7));
   const [customEnd, setCustomEnd] = useState(isoDateIST(new Date()));
@@ -85,12 +83,28 @@ export default function Dashboard({onCustomerAction}) {
   const bounds = useMemo(() => rangeToUTCBounds(range, customStart, customEnd), [range, customStart, customEnd]);
 
   useEffect(() => {
-    setLoading(true);
-    setError("");
-    getDashboardStats(bounds)
-      .then(setStats)
-      .catch((e) => setError(e.message || "Failed to load dashboard"))
-      .finally(() => setLoading(false));
+    let alive = true;
+    let inFlight = false;
+    let lastFetched = 0;
+    let sequence = 0;
+    const load = (force = false) => {
+      if (!navigator.onLine || inFlight) return;
+      // Focus and online events often fire together. Avoid a duplicate dashboard query.
+      if (!force && Date.now() - lastFetched < 15000) return;
+      inFlight = true;
+      const request = ++sequence;
+      setLoading(true);
+      setError("");
+      getDashboardStats(bounds)
+        .then(data => { if (alive && request === sequence) { setStats(data); lastFetched = Date.now(); } })
+        .catch(e => { if (alive && request === sequence) setError(e.message || "Failed to load dashboard"); })
+        .finally(() => { inFlight = false; if (alive && request === sequence) setLoading(false); });
+    };
+    load(true);
+    const onFocus = () => { if (!document.hidden) load(); };
+    window.addEventListener("focus", onFocus);
+    window.addEventListener("online", onFocus);
+    return () => { alive = false; window.removeEventListener("focus", onFocus); window.removeEventListener("online", onFocus); };
   }, [bounds]);
 
   return (

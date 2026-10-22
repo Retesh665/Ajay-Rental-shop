@@ -26,3 +26,16 @@ SQL migrations are retained in `supabase/migrations/` for reproducibility. Do no
 ## Important limitations
 
 Offline drafts are not final rentals or returns. The app must reconnect and confirm against Supabase. Concurrent booking and return settlement still need database-level atomicity/idempotency review before relying on multiple simultaneous staff submissions. The single-active-session migration and policies require live staging verification.
+
+
+## Dashboard date filter correction (October 2026)
+Dashboard period bounds use the current UTC instant converted to IST exactly once.
+Previously `isoDateIST(nowIST())` applied the 5:30 offset twice, shifting the
+Today range forward after 18:30 IST. All period filters now use
+`isoDateIST(new Date())`. No SQL migration is needed for this correction.
+Existing offline draft and cache modules are preserved.
+
+## Deployment and validation
+See `DEPLOYMENT.md`. Run `npm install`, `npm test`, and `npm run build`
+before deployment. Apply existing numbered SQL migrations in order if not yet
+applied. Keep `.env` secrets out of version control.

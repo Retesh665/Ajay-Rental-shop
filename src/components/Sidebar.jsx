@@ -13,7 +13,7 @@ const ITEMS = [
   ["notes", "Notes", StickyNote],
 ];
 
-export default function Sidebar({ screen, onSelect, open, onClose, onSignOut, signingOut = false }) {
+export default function Sidebar({ screen, onSelect, open, onClose, onSignOut }) {
   return <>
     {open && <div className="sidebar-backdrop" onClick={onClose} />}
     <aside className={`sidebar ${open ? "sidebar-open" : ""}`}>
@@ -24,7 +24,7 @@ export default function Sidebar({ screen, onSelect, open, onClose, onSignOut, si
       <nav className="sidebar-nav">
         {ITEMS.map(([key,label,Icon]) => <button key={key} className={screen===key ? "active" : ""} onClick={()=>{onSelect(key);onClose();}}><Icon size={18}/><span>{label}</span></button>)}
       </nav>
-      <div className="sidebar-foot"><button className="signout-button" onClick={onSignOut} disabled={signingOut}><LogOut size={18}/><span>{signingOut ? "Signing out…" : "Sign out"}</span></button></div>
+      <div className="sidebar-foot"><button className="signout-button" onClick={onSignOut}><LogOut size={18}/><span>Sign out</span></button></div>
     </aside>
   </>;
 }

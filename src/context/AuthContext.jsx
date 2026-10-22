@@ -1,6 +1,7 @@
 import React, {createContext, useContext, useEffect, useMemo, useRef, useState} from "react";
-import {supabase, isSupabaseConfigured} from "../lib/supabaseClient.js";
+import {clearOfflineSnapshots} from "../lib/offlineCache.js";
 import {clearPrivatePhotoCache} from "../lib/uploads.js";
+import {supabase, isSupabaseConfigured} from "../lib/supabaseClient.js";
 
 const AuthContext = createContext(null);
 export const useAuth = () => {
@@ -9,23 +10,6 @@ export const useAuth = () => {
   return value;
 };
 const REPLACED = "This account was signed in on another device or browser. Please sign in again.";
-
-// Supabase requests can hang when connectivity is unreliable. Never block local logout
-// indefinitely on an optional server-side session revocation request.
-const settleWithin = (promise, ms) => Promise.race([
-  Promise.resolve(promise).catch(() => null),
-  new Promise(resolve => setTimeout(() => resolve(null), ms)),
-]);
-
-// Used only when Supabase cannot complete its local sign-out. Remove only the
-// Supabase auth session key for this project, not RentDesk offline drafts/data.
-const clearStoredSupabaseSession = () => {
-  try {
-    const {hostname, port} = new URL(import.meta.env.VITE_SUPABASE_URL || "http://127.0.0.1:54321");
-    const projectRef = hostname.endsWith(".supabase.co") ? hostname.split(".")[0] : hostname.replace(/[^a-z0-9]/gi, "-") + (port ? `-${port}` : "");
-    localStorage.removeItem(`sb-${projectRef}-auth-token`);
-  } catch { /* storage may be disabled */ }
-};
 
 export function AuthProvider({children}) {
   const [session,setSession] = useState(null);
@@ -91,7 +75,7 @@ export function AuthProvider({children}) {
   useEffect(()=>{
     if (!session) return;
     const verify=()=>{void validate();};
-    const interval=setInterval(verify,10000);
+    const interval=setInterval(verify,30000);
     window.addEventListener("focus",verify);
     window.addEventListener("online",verify);
     const visibility=()=>{if(!document.hidden) verify();};
@@ -111,17 +95,26 @@ export function AuthProvider({children}) {
       accept(data.session);
     },
     signOut:async()=>{
-      // Clear UI/private image state first. Server outages must not trap staff in the app.
+      // Update the UI immediately; a remote session RPC must never block logout.
+      const previousUserId = currentSession.current?.user?.id;
       generation.current++;
       activated.current=false;
       accept(null);
       clearPrivatePhotoCache();
       setNotice("");
-      // End the active staff session while the access token is still available.
-      // A failed/timed-out RPC does not prevent local logout.
-      await settleWithin(supabase.rpc("rd_end_staff_session"), 2500);
-      const result = await settleWithin(supabase.auth.signOut({scope:"local"}), 2500);
-      if (!result || result.error) clearStoredSupabaseSession();
+      // Keep offline rental drafts intact. Remove only read-through snapshots
+      // associated with this staff account to avoid stale private data.
+      void clearOfflineSnapshots(previousUserId).catch(()=>{});
+      // The RPC is best-effort; local sign-out runs even when it fails.
+      // Avoid a stalled network request trapping the user on the dashboard.
+      // Supabase query builders are thenables, not native Promises; `.catch` is
+      // not available on the result of `rpc()` in all supported versions.
+      // Await remote invalidation before removing the local token, but do it
+      // independently of the UI transition so logout never appears stuck.
+      void (async () => {
+        try { await supabase.rpc("rd_end_staff_session"); } catch { /* best effort */ }
+        try { await supabase.auth.signOut({scope:"local"}); } catch { /* best effort */ }
+      })();
     }
   }),[session,loading,notice]);
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

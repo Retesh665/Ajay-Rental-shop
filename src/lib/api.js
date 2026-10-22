@@ -998,36 +998,34 @@ export async function correctTransaction({ originalTransactionId, newAmount, rea
 // ============================================================
 
 export async function getDashboardStats({ fromUTC, toUTC }) {
+  // Server-side aggregates avoid PostgREST's default 1,000-row response cap.
+  // If migration 013 is not installed, retain legacy behavior until deployed.
+  const {data: periodMetrics, error: periodError} = await supabase.rpc('rd_dashboard_period_metrics', {
+    p_from: fromUTC, p_to: toUTC
+  });
+  if (periodError && periodError.code !== '42883' && !/function.*does not exist|schema cache/i.test(periodError.message || '')) throw periodError;
+
   // Independent read-only dashboard requests run concurrently. This avoids
   // waiting for multiple network round trips in series on every tab visit.
   const [rentalsResult, chargesResult, customersResult, paymentsResult,
     allMachines, allProducts, activeItems, customersBal, itemsResult] = await Promise.all([
-    supabase.from("rental_orders").select("id", { count: "exact", head: true })
-      .gte("created_at", fromUTC).lte("created_at", toUTC),
-    supabase.from("transactions").select("rental_item_id")
-      .eq("type", "RENT_CHARGE").gte("occurred_at", fromUTC).lte("occurred_at", toUTC),
-    supabase.from("customers").select("id", { count: "exact", head: true })
-      .gte("created_at", fromUTC).lte("created_at", toUTC),
-    supabase.from("transactions").select("amount")
-      .eq("type", "PAYMENT_RECEIVED").gte("occurred_at", fromUTC).lte("occurred_at", toUTC),
-    listMachines(), listProducts(), listActiveRentals(), listCustomersWithBalance(""),
-    supabase.from("rental_items").select("product_id")
-      .gte("created_at", fromUTC).lte("created_at", toUTC),
+    periodMetrics ? Promise.resolve({count:0}) : supabase.from("rental_orders").select("id", {count:"exact",head:true}).gte("created_at",fromUTC).lte("created_at",toUTC),
+    periodMetrics ? Promise.resolve({data:[]}) : supabase.from("transactions").select("rental_item_id").eq("type","RENT_CHARGE").gte("occurred_at",fromUTC).lte("occurred_at",toUTC),
+    periodMetrics ? Promise.resolve({count:0}) : supabase.from("customers").select("id", {count:"exact",head:true}).gte("created_at",fromUTC).lte("created_at",toUTC),
+    periodMetrics ? Promise.resolve({data:[]}) : supabase.from("transactions").select("amount").eq("type","PAYMENT_RECEIVED").gte("occurred_at",fromUTC).lte("occurred_at",toUTC),
+    listMachines(),listProducts(),listActiveRentals(),listCustomersWithBalance(""),
+    supabase.from("rental_items").select("product_id").gte("created_at",fromUTC).lte("created_at",toUTC),
   ]);
-  for (const result of [rentalsResult, chargesResult, customersResult, paymentsResult, itemsResult]) {
-    if (result.error) throw result.error;
-  }
-  const newRentals = rentalsResult.count;
+  for (const result of [rentalsResult,chargesResult,customersResult,paymentsResult,itemsResult]) if(result.error) throw result.error;
+  const newRentals = periodMetrics ? Number(periodMetrics.new_rentals) : rentalsResult.count;
   const rentCharges = chargesResult.data;
-  const returnsCount = new Set((rentCharges || []).map(r => r.rental_item_id)).size;
-  const newCustomers = customersResult.count;
+  const returnsCount = periodMetrics ? Number(periodMetrics.returns_count) : new Set((rentCharges || []).map(r => r.rental_item_id)).size;
+  const newCustomers = periodMetrics ? Number(periodMetrics.new_customers) : customersResult.count;
   const payments = paymentsResult.data;
-  const totalCollected = (payments || []).reduce((sum, p) => sum + Math.abs(p.amount), 0);
+  const totalCollected = periodMetrics ? Number(periodMetrics.total_collected) : (payments || []).reduce((sum, p) => sum + Math.abs(p.amount), 0);
 
   const rented = allMachines.filter((m) => m.status === "rented").length;
   const repair = allMachines.filter((m) => m.status === "repair").length;
-
-  const activeCustomerIds = new Set(activeItems.map((i) => i.rental_orders.customer_id));
 
   const outstanding = customersBal.filter((c) => c.balance > 0);
   const outstandingCustomers = outstanding.length;
@@ -1065,7 +1063,7 @@ export async function getDashboardStats({ fromUTC, toUTC }) {
 
   return {
     newRentals: newRentals || 0, returnsCount, newCustomers: newCustomers || 0, totalCollected,
-    rented, repair, activeRentals: activeCustomerIds.size, outstandingCustomers, outstandingAmount,
+    rented, repair, activeRentals: new Set(activeItems.map(i => i.rental_order_id)).size, outstandingCustomers, outstandingAmount,
     topProducts, lowAvailability, activeCustomerList,
   };
 }

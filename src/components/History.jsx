@@ -68,7 +68,7 @@ function typeTone(r) {
   return TYPE_META[r.type]?.tone || "neutral";
 }
 function rangeToUTCBounds(range, customStart, customEnd) {
-  const todayISO = isoDateIST(new Date());
+  const todayISO = isoDateIST(nowIST());
   if (range === "all") return {};
   if (range === "today") return { fromUTC: istDateTimeToUTC(todayISO, "00:00").toISOString(), toUTC: istDateTimeToUTC(todayISO, "23:59").toISOString() };
   if (range === "week") return { fromUTC: istDateTimeToUTC(addDaysISO(todayISO, -6), "00:00").toISOString(), toUTC: istDateTimeToUTC(todayISO, "23:59").toISOString() };
@@ -79,7 +79,7 @@ function rangeToUTCBounds(range, customStart, customEnd) {
 
 export default function History() {
   const now = nowIST();
-  const TODAY_ISO = isoDateIST(new Date());
+  const TODAY_ISO = isoDateIST(now);
 
   const [rows, setRows] = useState([]);
   const [auditRows, setAuditRows] = useState([]);

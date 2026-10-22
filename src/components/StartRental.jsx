@@ -266,11 +266,10 @@ export default function StartRental({customerContext}) {
     const q = query.trim();
     if (!q) { setMatches([]); return; }
     setSearching(true);
-    let cancelled = false;
     const handle = setTimeout(() => {
-      searchCustomers(q).then((rows) => { if (!cancelled) { setMatches(rows); setLoadError(''); } }).catch((e) => { if (!cancelled) { setMatches([]); setLoadError(e.message); } }).finally(() => { if (!cancelled) setSearching(false); });
+      searchCustomers(q).then((rows) => { setMatches(rows); setLoadError(''); }).catch((e) => { setMatches([]); setLoadError(e.message); }).finally(() => setSearching(false));
     }, 250);
-    return () => { cancelled = true; clearTimeout(handle); };
+    return () => clearTimeout(handle);
   }, [query]);
 
   useEffect(() => {
@@ -279,11 +278,10 @@ export default function StartRental({customerContext}) {
     const mobileQ = newCustomer.referredBy.mobile.trim();
     const q = mobileQ || nameQ;
     if (q.length < 2) { setReferrerMatches([]); return; }
-    let cancelled = false;
     const handle = setTimeout(() => {
-      searchCustomers(q).then((r) => { if (!cancelled) setReferrerMatches(r.slice(0, 5)); }).catch(() => {});
+      searchCustomers(q).then((r) => setReferrerMatches(r.slice(0, 5))).catch(() => {});
     }, 250);
-    return () => { cancelled = true; clearTimeout(handle); };
+    return () => clearTimeout(handle);
   }, [newCustomer.referredBy.name, newCustomer.referredBy.mobile, newCustomer.referredBy.id]);
 
   function resetAll() {

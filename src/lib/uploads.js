@@ -2,13 +2,6 @@ import { prepareImageForUpload } from './imagePreparation.js';
 import { supabase } from './supabaseClient.js';
 const TYPES = new Set(['image/jpeg','image/png','image/webp']);
 const photoCache = new Map();
-const pendingPhotos = new Map();
-const MAX_CACHED_PHOTOS = 40;
-export function clearPrivatePhotoCache() {
-  for (const url of photoCache.values()) URL.revokeObjectURL(url);
-  photoCache.clear();
-  pendingPhotos.clear();
-}
 
 async function accessToken(forceRefresh = false) {
   const { data, error } = forceRefresh ? await supabase.auth.refreshSession() : await supabase.auth.getSession();
@@ -55,26 +48,22 @@ export async function uploadImage(file) {
 export async function resolvePhotoUrl(value) {
   if (!value || !value.startsWith('r2:')) return value || null;
   const key = value.slice(3);
-  if (photoCache.has(key)) return photoCache.get(key);
-  // Concurrent cards showing the same private photo share one authenticated request.
-  if (pendingPhotos.has(key)) return pendingPhotos.get(key);
-  const pending = (async () => {
-    const response = await photoRequest('/api/r2/photo', token => ({
-      method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ objectKey: key })
-    }));
-    const url = URL.createObjectURL(await response.blob());
-    // Keep object URLs valid while mounted. Clear on sign-out; do not evict
-    // during the session because mounted <img> elements may still reference them.
-    photoCache.set(key, url);
-    if (photoCache.size > MAX_CACHED_PHOTOS) console.debug('RentDesk private photo cache exceeds recommended size');
-    return url;
-  })();
-  pendingPhotos.set(key, pending);
-  try { return await pending; }
-  finally { pendingPhotos.delete(key); }
+  const cached = photoCache.get(key);
+  if (cached) return cached;
+  const response = await photoRequest('/api/r2/photo',token=>({method:'POST',headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({objectKey:key})}));
+  const url = URL.createObjectURL(await response.blob());
+  photoCache.set(key,url);
+  return url;
 }
 export async function checkPhotoConnection() {
   const response = await photoRequest('/api/r2/auth-check',token=>({method:'GET',headers:{Authorization:`Bearer ${token}`}}));
   return response.json();
+}
+
+// Private object URLs are session-scoped and must not survive a staff logout.
+export function clearPrivatePhotoCache() {
+  for (const url of photoCache.values()) {
+    if (typeof url === 'string' && url.startsWith('blob:')) URL.revokeObjectURL(url);
+  }
+  photoCache.clear();
 }
