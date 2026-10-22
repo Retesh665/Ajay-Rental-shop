@@ -209,7 +209,7 @@ export default function PaymentTab() {
                         <a.icon size={15} color={toneColors[1]} />
                       </div>
                       <div style={{ fontSize: 13.5, fontWeight: 700, color: INK }}>{a.label}</div>
-                      <div style={{ fontSize: 11.5, color: INK_SOFT, lineHeight: 1.4 }}>{a.desc}</div>
+                      
                     </button>
                   );
                 })}
@@ -217,7 +217,7 @@ export default function PaymentTab() {
             ) : (
               <div style={{ background: CARD, border: `1px solid ${LINE}`, borderRadius: 12, padding: 20 }}>
                 <div style={{ fontSize: 15, fontWeight: 600, color: INK, marginBottom: 4 }}>{ACTIONS.find((a) => a.key === activeAction).label}</div>
-                <p style={{ fontSize: 12.5, color: INK_SOFT, marginTop: 0, marginBottom: 16 }}>{ACTIONS.find((a) => a.key === activeAction).desc}</p>
+                
 
                 <Field label="Amount (₹)">
                   <input type="number" style={inputStyle} value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} placeholder="0" autoFocus />

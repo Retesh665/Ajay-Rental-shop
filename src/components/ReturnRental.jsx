@@ -307,7 +307,7 @@ export default function ReturnRental({customerContext}) {
       throw new Error('Customer balance changed. The current balance has been updated; review the payment and discount, then verify again.');
     }
     setVerified(true);
-    setDraftNotice('');
+    setDraftNotice('Live rental status and customer balance verified. Review amounts and confirm online.');
     setSubmitError('');
   }
 
@@ -581,6 +581,7 @@ export default function ReturnRental({customerContext}) {
                   <PackageCheck size={16} /> {submitting ? "Recording…" : "Confirm return"}
                 </PrimaryButton>
               </div>
+              
             </div>
           )}
 

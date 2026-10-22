@@ -92,14 +92,11 @@ export function AuthProvider({children}) {
       accept(data.session);
     },
     signOut:async()=>{
-      // Remote revocation is best-effort; a failing network request must never
-      // trap staff in the application when they choose Sign Out.
-      try { await supabase.rpc("rd_end_staff_session"); } catch { /* offline */ }
+      await supabase.rpc("rd_end_staff_session").catch(()=>{});
       generation.current++;
       activated.current=false;
+      try { await supabase.auth.signOut({scope:"local"}); } catch { /* local logout must still complete */ }
       accept(null);
-      try { await supabase.auth.signOut({scope:"local"}); }
-      catch { /* local UI is already signed out */ }
     }
   }),[session,loading,notice]);
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

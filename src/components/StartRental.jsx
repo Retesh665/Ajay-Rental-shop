@@ -111,11 +111,6 @@ export default function StartRental({customerContext}) {
   const [newCustomer, setNewCustomer] = useState(emptyNewCustomer);
   const [newCustomerError, setNewCustomerError] = useState("");
   const [savingCustomer, setSavingCustomer] = useState(false);
-  const [photoUploads, setPhotoUploads] = useState({});
-  const photosUploading = Object.values(photoUploads).some(Boolean);
-  const [photoErrors, setPhotoErrors] = useState({});
-  const photoFailed = Object.values(photoErrors).some(Boolean);
-  const setPhotoBusy = (key, busy) => setPhotoUploads(prev => ({ ...prev, [key]: busy }));
   const [referrerMatches, setReferrerMatches] = useState([]);
 
   const [selectedProductId, setSelectedProductId] = useState("");
@@ -303,6 +298,10 @@ export default function StartRental({customerContext}) {
     if(customerContext?.action==='start' && customerContext.customer?.id) pickCustomer(customerContext.customer);
   },[customerContext]);
 
+  const [pendingPhotos, setPendingPhotos] = useState({});
+  const photosUploading = Object.values(pendingPhotos).some(Boolean);
+  const setPhotoPending = (field, pending) => setPendingPhotos(prev => ({...prev, [field]: pending}));
+
   function continueToItems() {
     // Capture pickup time when staff actually proceeds to item selection,
     // rather than keeping the time from when this screen first opened.
@@ -326,13 +325,9 @@ export default function StartRental({customerContext}) {
 
   async function handleCreateCustomer() {
     setNewCustomerError("");
-    if (savingCustomer) return;
-    if (photosUploading) { setNewCustomerError("Please wait for photo uploads to finish before creating the customer."); return; }
-    if (photoFailed) { setNewCustomerError("A photo upload failed. Retry the image or remove it before creating the customer."); return; }
+    if (savingCustomer || photosUploading) { setNewCustomerError("Wait for photo uploads to finish before creating the customer."); return; }
+    if (!newCustomer.profession || (newCustomer.profession === "Other" && !newCustomer.customProfession.trim())) { setNewCustomerError("Profession is required."); return; }
     if (!newCustomer.name.trim()) { setNewCustomerError("Name is required."); return; }
-    if (!newCustomer.profession || (newCustomer.profession === "Other" && !newCustomer.customProfession.trim())) {
-      setNewCustomerError("Profession is required. Specify the profession when choosing Other."); return;
-    }
     if (!isValidMobile(newCustomer.mobile)) {
       setNewCustomerError("Wrong number — enter a 10-digit mobile number starting with 6, 7, 8, or 9.");
       return;
@@ -524,7 +519,7 @@ export default function StartRental({customerContext}) {
                 </select>
               </Field>
               {newCustomer.profession === "Other" && (
-                <Field label="Specify profession *">
+                <Field label="Specify profession">
                   <input style={inputStyle} value={newCustomer.customProfession} onChange={(e) => setNewCustomer({ ...newCustomer, customProfession: e.target.value })} />
                 </Field>
               )}
@@ -536,9 +531,9 @@ export default function StartRental({customerContext}) {
               </Field>
 
               <div className="rd-photo-grid" style={{ marginBottom: 6 }}>
-                <PhotoCapture label="Customer photo" value={newCustomer.photo_url} onBusyChange={busy => setPhotoBusy("photo", busy)} onErrorChange={failed => setPhotoErrors(prev => ({...prev, "photo": failed}))} onChange={url => setNewCustomer(prev => ({ ...prev, photo_url: url }))} />
-                <PhotoCapture label="ID proof — front" value={newCustomer.id_proof_front_url} onBusyChange={busy => setPhotoBusy("front", busy)} onErrorChange={failed => setPhotoErrors(prev => ({...prev, "front": failed}))} onChange={url => setNewCustomer(prev => ({ ...prev, id_proof_front_url: url }))} />
-                <PhotoCapture label="ID proof — back" value={newCustomer.id_proof_back_url} onBusyChange={busy => setPhotoBusy("back", busy)} onErrorChange={failed => setPhotoErrors(prev => ({...prev, "back": failed}))} onChange={url => setNewCustomer(prev => ({ ...prev, id_proof_back_url: url }))} />
+                <PhotoCapture label="Customer photo" value={newCustomer.photo_url} onUploadingChange={(pending) => setPhotoPending("photo_url", pending)} onChange={(url) => setNewCustomer(prev => ({ ...prev, photo_url: url }))} />
+                <PhotoCapture label="ID proof — front" value={newCustomer.id_proof_front_url} onUploadingChange={(pending) => setPhotoPending("id_proof_front_url", pending)} onChange={(url) => setNewCustomer(prev => ({ ...prev, id_proof_front_url: url }))} />
+                <PhotoCapture label="ID proof — back" value={newCustomer.id_proof_back_url} onUploadingChange={(pending) => setPhotoPending("id_proof_back_url", pending)} onChange={(url) => setNewCustomer(prev => ({ ...prev, id_proof_back_url: url }))} />
               </div>
 
               <Field label="Referred by (optional) — search by name or mobile">
@@ -567,8 +562,8 @@ export default function StartRental({customerContext}) {
 
               <div style={{ display: "flex", gap: 10, marginTop: 12 }}>
                 <GhostButton onClick={() => setPhase("search")}><ArrowLeft size={15} /> Back</GhostButton>
-                <PrimaryButton onClick={handleCreateCustomer} disabled={savingCustomer || photosUploading || photoFailed} style={{ flex: 1, justifyContent: "center" }}>
-                  {savingCustomer ? "Saving…" : photosUploading ? "Uploading photos…" : photoFailed ? "Fix photo upload" : "Create customer & continue"}
+                <PrimaryButton onClick={handleCreateCustomer} disabled={savingCustomer || photosUploading} style={{ flex: 1, justifyContent: "center" }}>
+                  {savingCustomer ? "Saving…" : photosUploading ? "Uploading photos…" : "Create customer & continue"}
                 </PrimaryButton>
               </div>
             </div>

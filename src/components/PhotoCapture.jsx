@@ -9,7 +9,7 @@ const RED = "#A5402C";
 
 // value: the saved publicUrl (or null). onChange(url) is called with the
 // final R2 publicUrl once upload completes — never with a blob: URL.
-export default function PhotoCapture({ label, value, onChange, onBusyChange, onErrorChange }) {
+export default function PhotoCapture({ label, value, onChange, onUploadingChange }) {
   const inputRef = useRef(null);
   const cameraRef = useRef(null);
   const [previewBlobUrl, setPreviewBlobUrl] = useState(null);
@@ -22,22 +22,20 @@ export default function PhotoCapture({ label, value, onChange, onBusyChange, onE
   async function handleFile(file) {
     if (!file) return;
     setError("");
-    onErrorChange?.(false);
-    if (typeof navigator !== "undefined" && !navigator.onLine) { setError("Photo uploads require internet. Reconnect and try again."); onErrorChange?.(true); return; }
+    if (typeof navigator !== "undefined" && !navigator.onLine) { setError("Photo uploads require internet. Reconnect and try again."); return; }
     const blobUrl = URL.createObjectURL(file);
     setPreviewBlobUrl(blobUrl); // instant preview, §6 step 4
     setUploading(true);
-    onBusyChange?.(true);
+    onUploadingChange?.(true);
     try {
       const photoReference = await uploadImage(file);
       await onChange(photoReference);
     } catch (e) {
       setError(e.message || "Upload failed");
-      onErrorChange?.(true);
       setPreviewBlobUrl(null);
     } finally {
       setUploading(false);
-      onBusyChange?.(false);
+      onUploadingChange?.(false);
       // Preview remains until the saved URL is rendered; the blob is revoked on replacement/unmount.
     }
   }
@@ -73,7 +71,7 @@ export default function PhotoCapture({ label, value, onChange, onBusyChange, onE
           )}
           {!uploading && (
             <button type="button" aria-label="Remove image"
-              onClick={() => { setPreviewBlobUrl(null); onErrorChange?.(false); onChange(null); }}
+              onClick={() => { setPreviewBlobUrl(null); onChange(null); }}
               style={{ position: "absolute", top: 4, right: 4, background: "rgba(28,35,51,0.7)", border: "none", borderRadius: "50%", width: 20, height: 20, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
             >
               <X size={12} color="#fff" />
