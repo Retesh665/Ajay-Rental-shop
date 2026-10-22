@@ -85,14 +85,12 @@ export default function Dashboard({onCustomerAction}) {
   const bounds = useMemo(() => rangeToUTCBounds(range, customStart, customEnd), [range, customStart, customEnd]);
 
   useEffect(() => {
-    let current = true;
     setLoading(true);
     setError("");
     getDashboardStats(bounds)
-      .then((value) => { if (current) setStats(value); })
-      .catch((e) => { if (current) setError(e.message || "Failed to load dashboard"); })
-      .finally(() => { if (current) setLoading(false); });
-    return () => { current = false; };
+      .then(setStats)
+      .catch((e) => setError(e.message || "Failed to load dashboard"))
+      .finally(() => setLoading(false));
   }, [bounds]);
 
   return (

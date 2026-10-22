@@ -823,13 +823,6 @@ export async function syncOfflineCustomerDirectory() {
   return rows.length;
 }
 
-export async function getCustomerWithBalance(customerId) {
-  const { data, error } = await supabase.from("customers_with_balance")
-    .select("*").eq("id", customerId).maybeSingle();
-  if (error) throw error;
-  return data;
-}
-
 export async function listCustomersWithBalance(query) {
   let q = supabase.from("customers_with_balance").select("*").order("name");
   if (query?.trim()) {
@@ -1008,7 +1001,7 @@ export async function getDashboardStats({ fromUTC, toUTC }) {
   // Independent read-only dashboard requests run concurrently. This avoids
   // waiting for multiple network round trips in series on every tab visit.
   const [rentalsResult, chargesResult, customersResult, paymentsResult,
-    allMachines, allProducts, activeItems, outstandingResult, itemsResult] = await Promise.all([
+    allMachines, allProducts, activeItems, customersBal, itemsResult] = await Promise.all([
     supabase.from("rental_orders").select("id", { count: "exact", head: true })
       .gte("created_at", fromUTC).lte("created_at", toUTC),
     supabase.from("transactions").select("rental_item_id")
@@ -1017,12 +1010,11 @@ export async function getDashboardStats({ fromUTC, toUTC }) {
       .gte("created_at", fromUTC).lte("created_at", toUTC),
     supabase.from("transactions").select("amount")
       .eq("type", "PAYMENT_RECEIVED").gte("occurred_at", fromUTC).lte("occurred_at", toUTC),
-    listMachines(), listProducts(), listActiveRentals(),
-    supabase.from("customers_with_balance").select("id,balance").gt("balance", 0),
+    listMachines(), listProducts(), listActiveRentals(), listCustomersWithBalance(""),
     supabase.from("rental_items").select("product_id")
       .gte("created_at", fromUTC).lte("created_at", toUTC),
   ]);
-  for (const result of [rentalsResult, chargesResult, customersResult, paymentsResult, outstandingResult, itemsResult]) {
+  for (const result of [rentalsResult, chargesResult, customersResult, paymentsResult, itemsResult]) {
     if (result.error) throw result.error;
   }
   const newRentals = rentalsResult.count;
@@ -1037,7 +1029,7 @@ export async function getDashboardStats({ fromUTC, toUTC }) {
 
   const activeCustomerIds = new Set(activeItems.map((i) => i.rental_orders.customer_id));
 
-  const outstanding = outstandingResult.data || [];
+  const outstanding = customersBal.filter((c) => c.balance > 0);
   const outstandingCustomers = outstanding.length;
   const outstandingAmount = outstanding.reduce((s, c) => s + c.balance, 0);
 
@@ -1045,26 +1037,22 @@ export async function getDashboardStats({ fromUTC, toUTC }) {
   const rentCounts = {};
   (itemsInRange || []).forEach((i) => { rentCounts[i.product_id] = (rentCounts[i.product_id] || 0) + 1; });
 
-  // One pass over machines instead of scanning the entire inventory for
-  // every product. The displayed counts and sorting remain unchanged.
-  const machineCounts = new Map();
-  for (const machine of allMachines) {
-    const entry = machineCounts.get(machine.product_id) || { total: 0, rentedNow: 0 };
-    entry.total += 1;
-    if (machine.status === "rented") entry.rentedNow += 1;
-    machineCounts.set(machine.product_id, entry);
-  }
-  const productSummary = allProducts.map((p) => {
-    const counts = machineCounts.get(p.id) || { total: 0, rentedNow: 0 };
-    return { product: p.name, timesRented: rentCounts[p.id] || 0,
-      total: counts.total, rentedNow: counts.rentedNow,
-      availableNow: counts.total - counts.rentedNow };
-  });
-  const topProducts = [...productSummary]
-    .sort((a, b) => b.timesRented - a.timesRented).slice(0, 5);
-  const lowAvailability = productSummary
-    .filter((p) => p.total > 0 && p.availableNow === 0)
-    .map(({ product, availableNow, total }) => ({ product, availableNow, total }));
+  const topProducts = allProducts
+    .map((p) => {
+      const pm = allMachines.filter((m) => m.product_id === p.id);
+      const total = pm.length;
+      const rentedNow = pm.filter((m) => m.status === "rented").length;
+      return { product: p.name, timesRented: rentCounts[p.id] || 0, total, rentedNow, availableNow: total - rentedNow };
+    })
+    .sort((a, b) => b.timesRented - a.timesRented)
+    .slice(0, 5);
+
+  const lowAvailability = allProducts
+    .map((p) => {
+      const pm = allMachines.filter((m) => m.product_id === p.id);
+      return { product: p.name, availableNow: pm.length - pm.filter((m) => m.status === "rented").length, total: pm.length };
+    })
+    .filter((p) => p.total > 0 && p.availableNow === 0);
 
   const byCustomer = {};
   activeItems.forEach((item) => {

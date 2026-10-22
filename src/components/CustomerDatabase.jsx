@@ -6,7 +6,7 @@ import {
   Pencil, Tag, X, Check, ArrowLeftRight, PlusCircle, ChevronRight, SlidersHorizontal, Flag, Phone, CreditCard, FileText,
 } from "lucide-react";
 import {
-  listCustomersWithBalance, getCustomerWithBalance, createCustomer, updateCustomer, getCustomerTransactions,
+  listCustomersWithBalance, createCustomer, updateCustomer, getCustomerTransactions,
   getCustomerOrders, getCustomerEvents, setCustomerFlag, correctTransaction,
 } from "../lib/api.js";
 import { isValidMobile, isoDateIST, hhmmIST, toIndianDate, to12Hour } from "../lib/dates.js";
@@ -125,20 +125,7 @@ export default function CustomerDatabase({customerContext}) {
       setLoading(false);
     }
   }
-  useEffect(() => {
-    let current = true;
-    const h = setTimeout(async () => {
-      setLoading(true);
-      setLoadError("");
-      try {
-        const rows = await listCustomersWithBalance(query);
-        if (current) setCustomers(rows);
-      } catch (error) {
-        if (current) setLoadError(error.message || "Failed to load customers");
-      } finally { if (current) setLoading(false); }
-    }, 250);
-    return () => { current = false; clearTimeout(h); };
-  }, [query]);
+  useEffect(() => { const h = setTimeout(() => refreshList(query), 250); return () => clearTimeout(h); }, [query]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const visibleCustomers = useMemo(() => {
     if (balanceMin === "" && balanceMax === "") return customers;
@@ -171,12 +158,12 @@ export default function CustomerDatabase({customerContext}) {
     setPhotoEditOpen(false);
     try {
       const [all, o, t, events] = await Promise.all([
-        getCustomerWithBalance(id),
+        listCustomersWithBalance(""),
         getCustomerOrders(id),
         getCustomerTransactions(id),
         getCustomerEvents(id),
       ]);
-      setSelected(all || customers.find((x) => x.id === id));
+      setSelected(all.find((x) => x.id === id) || customers.find((x) => x.id === id));
       setOrders(o);
       setExpandedRentals(new Set(o.length ? [o[0].id] : []));
       setTransactions(t);
