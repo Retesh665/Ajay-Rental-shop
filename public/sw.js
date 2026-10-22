@@ -1,6 +1,6 @@
 /* Cache immutable Vite assets only. Never cache private photos, API responses or user data. */
-const ASSET_CACHE = 'rentdesk-assets-v2';
-const SHELL_CACHE = 'rentdesk-navigation-v2';
+const ASSET_CACHE = 'rentdesk-assets-v3';
+const SHELL_CACHE = 'rentdesk-navigation-v3';
 self.addEventListener('install', event => { self.skipWaiting(); });
 self.addEventListener('activate', event => {
   event.waitUntil(Promise.all([

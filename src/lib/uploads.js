@@ -59,3 +59,10 @@ export async function checkPhotoConnection() {
   const response = await photoRequest('/api/r2/auth-check',token=>({method:'GET',headers:{Authorization:`Bearer ${token}`}}));
   return response.json();
 }
+
+export function clearPrivatePhotoCache() {
+  for (const url of photoCache.values()) {
+    if (typeof url === 'string' && url.startsWith('blob:')) URL.revokeObjectURL(url);
+  }
+  photoCache.clear();
+}

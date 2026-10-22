@@ -1,5 +1,6 @@
 import React, {createContext, useContext, useEffect, useMemo, useRef, useState} from "react";
 import {supabase, isSupabaseConfigured} from "../lib/supabaseClient.js";
+import {clearPrivatePhotoCache} from "../lib/uploads.js";
 
 const AuthContext = createContext(null);
 export const useAuth = () => {
@@ -23,6 +24,7 @@ export function AuthProvider({children}) {
     generation.current++;
     activated.current=false;
     accept(null);
+    clearPrivatePhotoCache();
     setNotice(REPLACED);
     await supabase.auth.signOut({scope:"local"}).catch(()=>{});
   };
@@ -97,6 +99,7 @@ export function AuthProvider({children}) {
       activated.current=false;
       try { await supabase.auth.signOut({scope:"local"}); } catch { /* local logout must still complete */ }
       accept(null);
+      clearPrivatePhotoCache();
     }
   }),[session,loading,notice]);
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
