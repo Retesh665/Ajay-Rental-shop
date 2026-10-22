@@ -49,7 +49,7 @@ function SectionLabel({ children }) {
 
 function rangeToUTCBounds(range, customStart, customEnd) {
   const now = nowIST();
-  const todayISO = isoDateIST(now);
+  const todayISO = isoDateIST(new Date());
   if (range === "today") return { fromUTC: istDateTimeToUTC(todayISO, "00:00").toISOString(), toUTC: istDateTimeToUTC(todayISO, "23:59").toISOString() };
   if (range === "week") return { fromUTC: istDateTimeToUTC(addDaysISO(todayISO, -6), "00:00").toISOString(), toUTC: istDateTimeToUTC(todayISO, "23:59").toISOString() };
   if (range === "month") return { fromUTC: istDateTimeToUTC(addDaysISO(todayISO, -29), "00:00").toISOString(), toUTC: istDateTimeToUTC(todayISO, "23:59").toISOString() };
@@ -75,8 +75,8 @@ export default function Dashboard({onCustomerAction}) {
   const [actionCustomer,setActionCustomer] = useState(null);
   const now = nowIST();
   const [range, setRange] = useState("today");
-  const [customStart, setCustomStart] = useState(addDaysISO(isoDateIST(now), -7));
-  const [customEnd, setCustomEnd] = useState(isoDateIST(now));
+  const [customStart, setCustomStart] = useState(addDaysISO(isoDateIST(new Date()), -7));
+  const [customEnd, setCustomEnd] = useState(isoDateIST(new Date()));
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -85,14 +85,12 @@ export default function Dashboard({onCustomerAction}) {
   const bounds = useMemo(() => rangeToUTCBounds(range, customStart, customEnd), [range, customStart, customEnd]);
 
   useEffect(() => {
-    let current = true;
     setLoading(true);
     setError("");
     getDashboardStats(bounds)
-      .then((value) => { if (current) setStats(value); })
-      .catch((e) => { if (current) setError(e.message || "Failed to load dashboard"); })
-      .finally(() => { if (current) setLoading(false); });
-    return () => { current = false; };
+      .then(setStats)
+      .catch((e) => setError(e.message || "Failed to load dashboard"))
+      .finally(() => setLoading(false));
   }, [bounds]);
 
   return (
