@@ -10,6 +10,23 @@ export const useAuth = () => {
 };
 const REPLACED = "This account was signed in on another device or browser. Please sign in again.";
 
+// Supabase requests can hang when connectivity is unreliable. Never block local logout
+// indefinitely on an optional server-side session revocation request.
+const settleWithin = (promise, ms) => Promise.race([
+  Promise.resolve(promise).catch(() => null),
+  new Promise(resolve => setTimeout(() => resolve(null), ms)),
+]);
+
+// Used only when Supabase cannot complete its local sign-out. Remove only the
+// Supabase auth session key for this project, not RentDesk offline drafts/data.
+const clearStoredSupabaseSession = () => {
+  try {
+    const {hostname, port} = new URL(import.meta.env.VITE_SUPABASE_URL || "http://127.0.0.1:54321");
+    const projectRef = hostname.endsWith(".supabase.co") ? hostname.split(".")[0] : hostname.replace(/[^a-z0-9]/gi, "-") + (port ? `-${port}` : "");
+    localStorage.removeItem(`sb-${projectRef}-auth-token`);
+  } catch { /* storage may be disabled */ }
+};
+
 export function AuthProvider({children}) {
   const [session,setSession] = useState(null);
   const [loading,setLoading] = useState(true);
@@ -94,12 +111,17 @@ export function AuthProvider({children}) {
       accept(data.session);
     },
     signOut:async()=>{
-      await supabase.rpc("rd_end_staff_session").catch(()=>{});
+      // Clear UI/private image state first. Server outages must not trap staff in the app.
       generation.current++;
       activated.current=false;
-      try { await supabase.auth.signOut({scope:"local"}); } catch { /* local logout must still complete */ }
       accept(null);
       clearPrivatePhotoCache();
+      setNotice("");
+      // End the active staff session while the access token is still available.
+      // A failed/timed-out RPC does not prevent local logout.
+      await settleWithin(supabase.rpc("rd_end_staff_session"), 2500);
+      const result = await settleWithin(supabase.auth.signOut({scope:"local"}), 2500);
+      if (!result || result.error) clearStoredSupabaseSession();
     }
   }),[session,loading,notice]);
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

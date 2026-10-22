@@ -21,6 +21,7 @@ const TITLES={dashboard:"Dashboard",start:"Start Rental",return:"Return Rental",
 export default function App(){
  const {user,loading,signOut,notice,clearNotice}=useAuth();
  const [authError,setAuthError]=useState("");
+ const [signingOut,setSigningOut]=useState(false);
  const [isOnline,setIsOnline]=useState(() => typeof navigator === 'undefined' ? true : navigator.onLine);
  const [connectionRecovered,setConnectionRecovered]=useState(false);
  useEffect(() => {
@@ -37,15 +38,19 @@ export default function App(){
  const [menuOpen,setMenuOpen]=useState(false);
  const Screen=SCREENS[screen]||Dashboard;
  const handleSignOut=async()=>{
+   if(signingOut) return;
+   setSigningOut(true);
    setAuthError("");
-   try {await signOut();setScreen("dashboard");setMenuOpen(false);}
+   setMenuOpen(false);
+   try {await signOut();setScreen("dashboard");}
    catch(error){setAuthError(error?.message || "Sign out failed");}
+   finally {setSigningOut(false);}
  };
  if (!isSupabaseConfigured) return <div role="alert" style={{padding:32}}>Supabase is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in .env.local, then restart the app.</div>;
  if (loading) return <div role="status" style={{padding:32}}>Checking staff session…</div>;
  if (!user) return <><Login/>{notice && <div role="alert" style={{position:"fixed",bottom:16,left:16,right:16,maxWidth:420,margin:"auto",padding:16,background:"#fff3ed",border:"1px solid #e6b39f",borderRadius:10,color:"#913e28",zIndex:1000}}>{notice} <button onClick={clearNotice}>Dismiss</button></div>}</>;
  return <div className="app-shell">
-   <Sidebar screen={screen} onSelect={navigate} open={menuOpen} onClose={()=>setMenuOpen(false)} onSignOut={handleSignOut}/>
+   <Sidebar screen={screen} onSelect={navigate} open={menuOpen} onClose={()=>setMenuOpen(false)} onSignOut={handleSignOut} signingOut={signingOut}/>
    <div className="app-content">
      <header className="mobile-topbar"><button onClick={()=>setMenuOpen(true)} aria-label="Open menu"><Menu size={23}/></button><strong>{TITLES[screen]}</strong><span/></header>
      {!isOnline && <div role="status" className="rd-network-banner">Offline — previously loaded information may remain visible, but saving rentals, returns and payments requires internet. Do not repeat a transaction until you verify whether it was saved.</div>}
