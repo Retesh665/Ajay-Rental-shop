@@ -13,7 +13,7 @@ const ITEMS = [
   ["notes", "Notes", StickyNote],
 ];
 
-export default function Sidebar({ screen, onSelect, open, onClose, onSignOut }) {
+export default function Sidebar({ screen, onSelect, open, onClose, onSignOut, onPrefetch }) {
   return <>
     {open && <div className="sidebar-backdrop" onClick={onClose} />}
     <aside className={`sidebar ${open ? "sidebar-open" : ""}`}>
@@ -22,7 +22,7 @@ export default function Sidebar({ screen, onSelect, open, onClose, onSignOut }) 
         <button className="sidebar-close" onClick={onClose} aria-label="Close menu"><X size={20}/></button>
       </div>
       <nav className="sidebar-nav">
-        {ITEMS.map(([key,label,Icon]) => <button key={key} className={screen===key ? "active" : ""} onClick={()=>{onSelect(key);onClose();}}><Icon size={18}/><span>{label}</span></button>)}
+        {ITEMS.map(([key,label,Icon]) => <button key={key} className={screen===key ? "active" : ""} onPointerEnter={()=>onPrefetch?.(key)} onFocus={()=>onPrefetch?.(key)} onClick={()=>{onSelect(key);onClose();}}><Icon size={18}/><span>{label}</span></button>)}
       </nav>
       <div className="sidebar-foot"><button className="signout-button" onClick={onSignOut}><LogOut size={18}/><span>Sign out</span></button></div>
     </aside>

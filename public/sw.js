@@ -1,6 +1,6 @@
 /* Cache immutable Vite assets only. Never cache private photos, API responses or user data. */
-const ASSET_CACHE = 'rentdesk-assets-v2';
-const SHELL_CACHE = 'rentdesk-navigation-v2';
+const ASSET_CACHE = 'rentdesk-assets-v3';
+const SHELL_CACHE = 'rentdesk-navigation-v3';
 self.addEventListener('install', event => { self.skipWaiting(); });
 self.addEventListener('activate', event => {
   event.waitUntil(Promise.all([
@@ -15,7 +15,7 @@ self.addEventListener('fetch', event => {
   if (url.origin !== self.location.origin || url.pathname.startsWith('/api/') || url.pathname.startsWith('/auth/')) return;
   if (req.mode === 'navigate') {
     event.respondWith(fetch(req).then(res => {
-      if (res.ok && res.type === 'basic') event.waitUntil(caches.open(SHELL_CACHE).then(c => c.put('/index.html', res.clone())));
+      if (res.ok && res.type === 'basic' && res.headers.get('content-type')?.includes('text/html')) event.waitUntil(caches.open(SHELL_CACHE).then(c => c.put('/index.html', res.clone())));
       return res;
     }).catch(async () => (await caches.match('/index.html')) || Response.error()));
     return;
@@ -25,7 +25,11 @@ self.addEventListener('fetch', event => {
     const cached = await cache.match(req);
     if (cached) return cached;
     const response = await fetch(req);
-    if (response.ok && response.type === 'basic') event.waitUntil(cache.put(req, response.clone()));
+    if (response.ok && response.type === 'basic') event.waitUntil((async () => {
+      await cache.put(req, response.clone());
+      const keys = await cache.keys();
+      if (keys.length > 100) await Promise.all(keys.slice(0, keys.length - 100).map(key => cache.delete(key)));
+    })());
     return response;
   }));
 });

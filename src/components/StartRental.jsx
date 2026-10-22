@@ -111,6 +111,11 @@ export default function StartRental({customerContext}) {
   const [newCustomer, setNewCustomer] = useState(emptyNewCustomer);
   const [newCustomerError, setNewCustomerError] = useState("");
   const [savingCustomer, setSavingCustomer] = useState(false);
+  const [photoUploads, setPhotoUploads] = useState({});
+  const photosUploading = Object.values(photoUploads).some(Boolean);
+  const [photoErrors, setPhotoErrors] = useState({});
+  const photoFailed = Object.values(photoErrors).some(Boolean);
+  const setPhotoBusy = (key, busy) => setPhotoUploads(prev => ({ ...prev, [key]: busy }));
   const [referrerMatches, setReferrerMatches] = useState([]);
 
   const [selectedProductId, setSelectedProductId] = useState("");
@@ -321,7 +326,13 @@ export default function StartRental({customerContext}) {
 
   async function handleCreateCustomer() {
     setNewCustomerError("");
+    if (savingCustomer) return;
+    if (photosUploading) { setNewCustomerError("Please wait for photo uploads to finish before creating the customer."); return; }
+    if (photoFailed) { setNewCustomerError("A photo upload failed. Retry the image or remove it before creating the customer."); return; }
     if (!newCustomer.name.trim()) { setNewCustomerError("Name is required."); return; }
+    if (!newCustomer.profession || (newCustomer.profession === "Other" && !newCustomer.customProfession.trim())) {
+      setNewCustomerError("Profession is required. Specify the profession when choosing Other."); return;
+    }
     if (!isValidMobile(newCustomer.mobile)) {
       setNewCustomerError("Wrong number — enter a 10-digit mobile number starting with 6, 7, 8, or 9.");
       return;
@@ -420,7 +431,7 @@ export default function StartRental({customerContext}) {
           <div style={{ fontSize: 12, color: FOREST_DARK, fontWeight: 700, letterSpacing: 1.2, textTransform: "uppercase" }}>RentDesk</div>
           <div style={{ fontSize: 20, fontWeight: 700, color: INK, marginTop: 2 }}>Start a rental</div>
         </div>
-        <p style={{ fontSize: 11, color: "#9A988E", marginTop: 0, marginBottom: 16 }}>All times shown are IST (India Standard Time).</p>
+        
         {loadError && <div style={{ color: RED, fontSize: 13, marginBottom: 12 }}>{loadError}</div>}
 
         {drafts.length > 0 && phase === 'search' && <section style={{border:'1px solid #BCD8C7',background:'#F0F7F2',borderRadius:12,padding:14,marginBottom:18}}>
@@ -440,7 +451,7 @@ export default function StartRental({customerContext}) {
           {phase === "search" && (
             <div>
               <div style={{ fontSize: 15, fontWeight: 600, color: INK, marginBottom: 4 }}>Find the customer</div>
-              <p style={{ fontSize: 13, color: INK_SOFT, marginTop: 0, marginBottom: 14 }}>Start typing a name or mobile number.</p>
+              
               <div style={{ position: "relative", marginBottom: 14 }}>
                 <Search size={15} color={INK_SOFT} style={{ position: "absolute", left: 12, top: 12 }} />
                 <input style={{ ...inputStyle, paddingLeft: 34 }} placeholder="Name or mobile number" value={query} onChange={(e) => setQuery(e.target.value)} />
@@ -506,14 +517,14 @@ export default function StartRental({customerContext}) {
                   <input style={inputStyle} value={newCustomer.additionalMobile} inputMode="numeric" maxLength={10} onChange={(e) => setNewCustomer({ ...newCustomer, additionalMobile: e.target.value.replace(/\D/g, "").slice(0, 10) })} />
                 </Field>
               )}
-              <Field label="Profession">
+              <Field label="Profession *">
                 <select style={inputStyle} value={newCustomer.profession} onChange={(e) => setNewCustomer({ ...newCustomer, profession: e.target.value })}>
                   <option value="">— Select —</option>
                   {PROFESSIONS.map((p) => <option key={p} value={p}>{p}</option>)}
                 </select>
               </Field>
               {newCustomer.profession === "Other" && (
-                <Field label="Specify profession">
+                <Field label="Specify profession *">
                   <input style={inputStyle} value={newCustomer.customProfession} onChange={(e) => setNewCustomer({ ...newCustomer, customProfession: e.target.value })} />
                 </Field>
               )}
@@ -525,9 +536,9 @@ export default function StartRental({customerContext}) {
               </Field>
 
               <div className="rd-photo-grid" style={{ marginBottom: 6 }}>
-                <PhotoCapture label="Customer photo" value={newCustomer.photo_url} onChange={(url) => setNewCustomer({ ...newCustomer, photo_url: url })} />
-                <PhotoCapture label="ID proof — front" value={newCustomer.id_proof_front_url} onChange={(url) => setNewCustomer({ ...newCustomer, id_proof_front_url: url })} />
-                <PhotoCapture label="ID proof — back" value={newCustomer.id_proof_back_url} onChange={(url) => setNewCustomer({ ...newCustomer, id_proof_back_url: url })} />
+                <PhotoCapture label="Customer photo" value={newCustomer.photo_url} onBusyChange={busy => setPhotoBusy("photo", busy)} onErrorChange={failed => setPhotoErrors(prev => ({...prev, "photo": failed}))} onChange={url => setNewCustomer(prev => ({ ...prev, photo_url: url }))} />
+                <PhotoCapture label="ID proof — front" value={newCustomer.id_proof_front_url} onBusyChange={busy => setPhotoBusy("front", busy)} onErrorChange={failed => setPhotoErrors(prev => ({...prev, "front": failed}))} onChange={url => setNewCustomer(prev => ({ ...prev, id_proof_front_url: url }))} />
+                <PhotoCapture label="ID proof — back" value={newCustomer.id_proof_back_url} onBusyChange={busy => setPhotoBusy("back", busy)} onErrorChange={failed => setPhotoErrors(prev => ({...prev, "back": failed}))} onChange={url => setNewCustomer(prev => ({ ...prev, id_proof_back_url: url }))} />
               </div>
 
               <Field label="Referred by (optional) — search by name or mobile">
@@ -556,8 +567,8 @@ export default function StartRental({customerContext}) {
 
               <div style={{ display: "flex", gap: 10, marginTop: 12 }}>
                 <GhostButton onClick={() => setPhase("search")}><ArrowLeft size={15} /> Back</GhostButton>
-                <PrimaryButton onClick={handleCreateCustomer} disabled={savingCustomer} style={{ flex: 1, justifyContent: "center" }}>
-                  {savingCustomer ? "Saving…" : "Create customer & continue"}
+                <PrimaryButton onClick={handleCreateCustomer} disabled={savingCustomer || photosUploading || photoFailed} style={{ flex: 1, justifyContent: "center" }}>
+                  {savingCustomer ? "Saving…" : photosUploading ? "Uploading photos…" : photoFailed ? "Fix photo upload" : "Create customer & continue"}
                 </PrimaryButton>
               </div>
             </div>
@@ -599,7 +610,7 @@ export default function StartRental({customerContext}) {
           {phase === "items" && (
             <div>
               <div style={{ fontSize: 15, fontWeight: 600, color: INK, marginBottom: 4 }}>Select items</div>
-              <p style={{ fontSize: 13, color: INK_SOFT, marginTop: 0, marginBottom: 14 }}>Only available machines are shown.</p>
+              
 
               <Field label="Product">
                 <select style={inputStyle} value={selectedProductId} onChange={(e) => setSelectedProductId(e.target.value)}>
@@ -658,7 +669,7 @@ export default function StartRental({customerContext}) {
                   <input type="date" style={compactInputStyle} value={rentalDetails.returnDate} onChange={(e) => setRentalDetails({ ...rentalDetails, returnDate: e.target.value })} />
                   <input type="time" style={{ ...compactInputStyle, width: 92, flex: "none" }} value={rentalDetails.returnTime} onChange={(e) => setRentalDetails({ ...rentalDetails, returnTime: e.target.value })} />
                 </div>
-                <p style={{ fontSize: 10.5, color: "#9A988E", margin: "8px 0 0" }}>IST · returning by 11:00 AM avoids an extra billed day</p>
+                
               </div>
 
               <div style={{ border: `1px solid ${LINE}`, borderRadius: 10, padding: 12, marginBottom: 14 }}>

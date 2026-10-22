@@ -40,7 +40,7 @@ export default function Notes() {
   async function remove(n) {if(!window.confirm('Delete this note?'))return;setError('');try {const r=await supabase.from('rd_notes').delete().eq('id',n.id);if(r.error)throw r.error;await load()}catch(e){setError(e.message)}}
   const visible=notes.filter(n=>`${n.title||''} ${n.body||''} ${(n.items||[]).map(x=>x.text).join(' ')}`.toLowerCase().includes(search.toLowerCase()));
   return <main style={{maxWidth:1060,margin:'auto',padding:'28px 20px',color:'#1c2333'}}>
-    <header style={{marginBottom:24}}><h2 style={{margin:'0 0 5px',fontSize:25}}>Notes</h2><p style={{color:'#65746b',margin:0}}>Keep shop tasks, reminders and ideas in one place.</p></header>
+    <header style={{marginBottom:24}}><h2 style={{margin:'0 0 5px',fontSize:25}}>Notes</h2></header>
     {error&&<p role="alert" style={{color:'#a5402c'}}>{error}</p>}
     <div style={{maxWidth:680,margin:'0 auto 26px'}}>
       <div style={{display:'flex',alignItems:'center',gap:10,background:'#fff',border:'1px solid #dce3dc',borderRadius:12,padding:'0 12px',marginBottom:16}}><Search size={18} color="#65746b"/><input aria-label="Search notes" style={{...field,border:0,padding:'13px 0'}} placeholder="Search notes..." value={search} onChange={e=>setSearch(e.target.value)}/>{search&&<button type="button" aria-label="Clear search" style={{...action,border:0,padding:5}} onClick={()=>setSearch('')}><X size={17}/></button>}</div>

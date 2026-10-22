@@ -147,7 +147,7 @@ export default function ManageActiveRental({customerContext}) {
           <div style={{ marginBottom: 20 }}>
             <div style={{ fontSize: 12, color: FOREST_DARK, fontWeight: 700, letterSpacing: 1.2, textTransform: "uppercase" }}>RentDesk</div>
             <div style={{ fontSize: 20, fontWeight: 700, color: INK, marginTop: 2 }}>Manage active rentals</div>
-            <p style={{ fontSize: 13, color: INK_SOFT, marginTop: 4 }}>Grouped by customer — someone with more than one order shows as a single entry.</p>
+            
           </div>
           {loadError && <div style={{ color: RED, fontSize: 13, marginBottom: 12 }}>{loadError}</div>}
           <div style={{ position: "relative", marginBottom: 16 }}>

@@ -307,7 +307,7 @@ export default function ReturnRental({customerContext}) {
       throw new Error('Customer balance changed. The current balance has been updated; review the payment and discount, then verify again.');
     }
     setVerified(true);
-    setDraftNotice('Live rental status and customer balance verified. Review amounts and confirm online.');
+    setDraftNotice('');
     setSubmitError('');
   }
 
@@ -396,7 +396,7 @@ export default function ReturnRental({customerContext}) {
         <div style={{ marginBottom: 22 }}>
           <div style={{ fontSize: 12, color: FOREST_DARK, fontWeight: 700, letterSpacing: 1.2, textTransform: "uppercase" }}>RentDesk</div>
           <div style={{ fontSize: 20, fontWeight: 700, color: INK, marginTop: 2 }}>Return rental</div>
-          <p style={{ fontSize: 11, color: "#9A988E", marginTop: 4, marginBottom: 0 }}>All times shown are IST.</p>
+          
         </div>
 
         {loadError && <div style={{ color: RED, fontSize: 13, marginBottom: 12 }}>{loadError}</div>}
@@ -417,9 +417,7 @@ export default function ReturnRental({customerContext}) {
           {phase === "browse" && (
             <div>
               <div style={{ fontSize: 15, fontWeight: 600, color: INK, marginBottom: 4 }}>Current rentals</div>
-              <p style={{ fontSize: 13, color: INK_SOFT, marginTop: 0, marginBottom: 14 }}>
-                Grouped by customer — someone with machines across more than one order shows as a single entry.
-              </p>
+              
               <div style={{ position: "relative", marginBottom: 16 }}>
                 <Search size={15} color={INK_SOFT} style={{ position: "absolute", left: 12, top: 12 }} />
                 <input style={{ ...inputStyle, paddingLeft: 34 }} placeholder="Filter by mobile, name, order ID, or machine number" value={query} onChange={(e) => setQuery(e.target.value)} />
@@ -462,9 +460,7 @@ export default function ReturnRental({customerContext}) {
                 </div>
                 <div style={{ fontSize: 15, fontWeight: 600, color: INK, textAlign: "right" }}>{selectedGroup.customer.name}</div>
               </div>
-              <p style={{ fontSize: 13, color: INK_SOFT, marginTop: 0, marginBottom: 16 }}>
-                Set each machine's actual return date & time — defaults to right now, but change it if it's not accurate.
-              </p>
+              
 
               {itemsByOrder.map((group) => (
                 <div key={group.orderId} style={{ marginBottom: 18 }}>
@@ -585,7 +581,6 @@ export default function ReturnRental({customerContext}) {
                   <PackageCheck size={16} /> {submitting ? "Recording…" : "Confirm return"}
                 </PrimaryButton>
               </div>
-              {online && <div style={{ fontSize: 11.5, color: INK_SOFT, marginTop: 9 }}>Live rental status and balance are checked automatically before confirmation.</div>}
             </div>
           )}
 

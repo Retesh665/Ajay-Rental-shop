@@ -3,16 +3,27 @@ import Login from "./components/Login.jsx";
 import {useAuth} from "./context/AuthContext.jsx";
 import { Menu } from "lucide-react";
 import Sidebar from "./components/Sidebar.jsx";
-const Dashboard = lazy(() => import("./components/Dashboard.jsx"));
-const StartRental = lazy(() => import("./components/StartRental.jsx"));
-const ReturnRental = lazy(() => import("./components/ReturnRental.jsx"));
-const ManageActiveRental = lazy(() => import("./components/ManageActiveRental.jsx"));
-const PaymentTab = lazy(() => import("./components/PaymentTab.jsx"));
-const CustomerDatabase = lazy(() => import("./components/CustomerDatabase.jsx"));
-const Inventory = lazy(() => import("./components/Inventory.jsx"));
+const screenLoaders = {
+  dashboard: () => import("./components/Dashboard.jsx"),
+  start: () => import("./components/StartRental.jsx"),
+  return: () => import("./components/ReturnRental.jsx"),
+  active: () => import("./components/ManageActiveRental.jsx"),
+  payments: () => import("./components/PaymentTab.jsx"),
+  customers: () => import("./components/CustomerDatabase.jsx"),
+  inventory: () => import("./components/Inventory.jsx"),
+  history: () => import("./components/History.jsx"),
+  notes: () => import("./components/Notes.jsx"),
+};
+const Dashboard = lazy(screenLoaders.dashboard);
+const StartRental = lazy(screenLoaders.start);
+const ReturnRental = lazy(screenLoaders.return);
+const ManageActiveRental = lazy(screenLoaders.active);
+const PaymentTab = lazy(screenLoaders.payments);
+const CustomerDatabase = lazy(screenLoaders.customers);
+const Inventory = lazy(screenLoaders.inventory);
 
-const History = lazy(() => import("./components/History.jsx"));
-const Notes = lazy(() => import("./components/Notes.jsx"));
+const History = lazy(screenLoaders.history);
+const Notes = lazy(screenLoaders.notes);
 import { supabase, isSupabaseConfigured } from "./lib/supabaseClient.js";
 
 const SCREENS={dashboard:Dashboard,start:StartRental,return:ReturnRental,active:ManageActiveRental,payments:PaymentTab,customers:CustomerDatabase,inventory:Inventory,history:History,notes:Notes};
@@ -45,7 +56,7 @@ export default function App(){
  if (loading) return <div role="status" style={{padding:32}}>Checking staff session…</div>;
  if (!user) return <><Login/>{notice && <div role="alert" style={{position:"fixed",bottom:16,left:16,right:16,maxWidth:420,margin:"auto",padding:16,background:"#fff3ed",border:"1px solid #e6b39f",borderRadius:10,color:"#913e28",zIndex:1000}}>{notice} <button onClick={clearNotice}>Dismiss</button></div>}</>;
  return <div className="app-shell">
-   <Sidebar screen={screen} onSelect={navigate} open={menuOpen} onClose={()=>setMenuOpen(false)} onSignOut={handleSignOut}/>
+   <Sidebar screen={screen} onSelect={navigate} open={menuOpen} onClose={()=>setMenuOpen(false)} onSignOut={handleSignOut} onPrefetch={target => { if (navigator.onLine) screenLoaders[target]?.().catch(() => {}); }}/>
    <div className="app-content">
      <header className="mobile-topbar"><button onClick={()=>setMenuOpen(true)} aria-label="Open menu"><Menu size={23}/></button><strong>{TITLES[screen]}</strong><span/></header>
      {!isOnline && <div role="status" className="rd-network-banner">Offline — previously loaded information may remain visible, but saving rentals, returns and payments requires internet. Do not repeat a transaction until you verify whether it was saved.</div>}

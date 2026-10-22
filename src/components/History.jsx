@@ -142,7 +142,7 @@ export default function History() {
           <div>
             <div style={{ fontSize: 12, color: FOREST_DARK, fontWeight: 700, letterSpacing: 1.2, textTransform: "uppercase" }}>RentDesk</div>
             <div style={{ fontSize: 20, fontWeight: 700, color: INK, marginTop: 2 }}>History</div>
-            <p style={{ fontSize: 12.5, color: INK_SOFT, marginTop: 4, marginBottom: 0 }}>Every action, in order, exactly as it happened — nothing here is ever edited.</p>
+            
           </div>
           <button onClick={handleExport} style={{ display: "flex", alignItems: "center", gap: 6, background: FOREST, color: "#fff", border: "none", borderRadius: 8, padding: "9px 16px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
             <Download size={14} /> Export CSV ({filtered.length})

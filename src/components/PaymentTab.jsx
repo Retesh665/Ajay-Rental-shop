@@ -20,10 +20,10 @@ const RED_BG = "#FBEAE5";
 const MODES = ["Cash", "UPI", "Bank Transfer", "Card", "Other"];
 
 const ACTIONS = [
-  { key: "collect", label: "Collect payment", icon: IndianRupee, tone: "forest", desc: "Reduces balance due — goes negative (credit) automatically if overpaid" },
-  { key: "refund", label: "Give refund / payout", icon: Undo2, tone: "amber", desc: "Pays cash out against existing credit, any time — not just at return" },
-  { key: "charge", label: "Add charge", icon: ReceiptText, tone: "red", desc: "Misc service fee, delivery charge — not tied to a rental" },
-  { key: "discount", label: "Add discount / waiver", icon: Tag, tone: "amber", desc: "Lowers balance — needs a note, logged separately from payments" },
+  { key: "collect", label: "Collect payment", icon: IndianRupee, tone: "forest", desc: "" },
+  { key: "refund", label: "Give refund / payout", icon: Undo2, tone: "amber", desc: "" },
+  { key: "charge", label: "Add charge", icon: ReceiptText, tone: "red", desc: "" },
+  { key: "discount", label: "Add discount / waiver", icon: Tag, tone: "amber", desc: "" },
 ];
 
 const inputStyle = { width: "100%", boxSizing: "border-box", padding: "10px 12px", border: `1px solid ${LINE}`, borderRadius: 8, fontSize: 14.5, fontFamily: "inherit", color: INK, background: "#fff", outline: "none" };
@@ -142,7 +142,7 @@ export default function PaymentTab() {
         <div style={{ marginBottom: 20 }}>
           <div style={{ fontSize: 12, color: FOREST_DARK, fontWeight: 700, letterSpacing: 1.2, textTransform: "uppercase" }}>RentDesk</div>
           <div style={{ fontSize: 20, fontWeight: 700, color: INK, marginTop: 2 }}>Payment</div>
-          <p style={{ fontSize: 13, color: INK_SOFT, marginTop: 4 }}>Works against a customer's account directly — no rental required.</p>
+          
         </div>
 
         {loadError && <div style={{ color: RED, fontSize: 13, marginBottom: 12 }}>{loadError}</div>}

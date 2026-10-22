@@ -53,6 +53,9 @@ export async function searchCustomers(query) {
 
 export async function createCustomer(input, userId) {
   userId = userId ?? (await getCurrentUserId());
+  if (!input.profession?.trim() || (input.profession === "Other" && !input.custom_profession?.trim())) {
+    throw new Error("Profession is required.");
+  }
   if (!isValidMobile(input.mobile)) throw new Error("Wrong number");
   if (input.additional_mobile && !isValidMobile(input.additional_mobile)) {
     throw new Error("Wrong number");
