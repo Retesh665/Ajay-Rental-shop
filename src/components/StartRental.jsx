@@ -78,7 +78,7 @@ function StepTicket({ current }) {
 const emptyNewCustomer = {
   name: "", mobile: "", additionalMobile: "", showAdditionalMobile: false,
   profession: "", customProfession: "",
-  village: "", address: "",
+  village: "", address: "", remarks: "",
   photo_url: null, id_proof_front_url: null, id_proof_back_url: null,
   referredBy: { id: "", name: "", mobile: "", address: "" },
 };
@@ -261,27 +261,33 @@ export default function StartRental({customerContext}) {
   },[recentCustomers,recentPeriod,recentCustomStart,recentCustomEnd]);
   useEffect(()=>setRecentPage(1),[recentPeriod,recentCustomStart,recentCustomEnd]);
   useEffect(()=>setSearchPage(1),[query]);
-  // Debounced-ish live customer search
+  // Debounce remote searches and ignore responses from superseded queries.
+  // Keep the same offline lookup and results; never let an older request replace newer input.
   useEffect(() => {
+    let active = true;
     const q = query.trim();
-    if (!q) { setMatches([]); return; }
+    if (!q) { setMatches([]); setSearching(false); return () => { active = false; }; }
     setSearching(true);
     const handle = setTimeout(() => {
-      searchCustomers(q).then((rows) => { setMatches(rows); setLoadError(''); }).catch((e) => { setMatches([]); setLoadError(e.message); }).finally(() => setSearching(false));
+      searchCustomers(q)
+        .then(rows => { if (active) { setMatches(rows); setLoadError(''); } })
+        .catch(e => { if (active) { setMatches([]); setLoadError(e.message); } })
+        .finally(() => { if (active) setSearching(false); });
     }, 250);
-    return () => clearTimeout(handle);
+    return () => { active = false; clearTimeout(handle); };
   }, [query]);
 
   useEffect(() => {
-    if (newCustomer.referredBy.id) { setReferrerMatches([]); return; }
+    let active = true;
+    if (newCustomer.referredBy.id) { setReferrerMatches([]); return () => { active = false; }; }
     const nameQ = newCustomer.referredBy.name.trim();
     const mobileQ = newCustomer.referredBy.mobile.trim();
     const q = mobileQ || nameQ;
-    if (q.length < 2) { setReferrerMatches([]); return; }
+    if (q.length < 2) { setReferrerMatches([]); return () => { active = false; }; }
     const handle = setTimeout(() => {
-      searchCustomers(q).then((r) => setReferrerMatches(r.slice(0, 5))).catch(() => {});
+      searchCustomers(q).then(r => { if (active) setReferrerMatches(r.slice(0, 5)); }).catch(() => {});
     }, 250);
-    return () => clearTimeout(handle);
+    return () => { active = false; clearTimeout(handle); };
   }, [newCustomer.referredBy.name, newCustomer.referredBy.mobile, newCustomer.referredBy.id]);
 
   function resetAll() {
@@ -346,6 +352,7 @@ export default function StartRental({customerContext}) {
         custom_profession: newCustomer.customProfession,
         village: newCustomer.village,
         address: newCustomer.address,
+        remarks: newCustomer.remarks,
         photo_url: newCustomer.photo_url,
         id_proof_front_url: newCustomer.id_proof_front_url,
         id_proof_back_url: newCustomer.id_proof_back_url,
@@ -527,7 +534,11 @@ export default function StartRental({customerContext}) {
                 <input style={inputStyle} value={newCustomer.village} onChange={(e) => setNewCustomer({ ...newCustomer, village: e.target.value })} />
               </Field>
               <Field label="Address">
-                <textarea rows={2} style={{ ...inputStyle, resize: "vertical" }} value={newCustomer.address} onChange={(e) => setNewCustomer({ ...newCustomer, address: e.target.value })} />
+                <textarea rows={2} style={inputStyle} value={newCustomer.address} onChange={(e) => setNewCustomer({ ...newCustomer, address: e.target.value })} />
+              </Field>
+
+              <Field label="Remarks">
+                <textarea rows={2} style={inputStyle} value={newCustomer.remarks} onChange={(e) => setNewCustomer({ ...newCustomer, remarks: e.target.value })} />
               </Field>
 
               <div className="rd-photo-grid" style={{ marginBottom: 6 }}>
@@ -577,6 +588,7 @@ export default function StartRental({customerContext}) {
                 <div style={{ fontSize: 15, fontWeight: 600, color: INK }}>{activeCustomer.name}</div>
                 <div style={{ fontSize: 12.5, color: INK_SOFT, marginTop: 2, fontFamily: "monospace" }}>{activeCustomer.mobile}</div>
                 {(activeCustomer.village || activeCustomer.address) && <div style={{ fontSize: 12.5, color: INK_SOFT, marginTop: 4 }}><MapPin size={12} style={{ verticalAlign: "-2px", marginRight: 4 }} />{[activeCustomer.village, activeCustomer.address].filter(Boolean).join(", ")}</div>}
+                {activeCustomer.remarks && <div style={{ fontSize: 12.5, color: INK_SOFT, marginTop: 9, background: "#fff", border: `1px solid ${LINE}`, borderRadius: 8, padding: 10 }}><strong style={{ color: INK }}>Remarks</strong><div style={{ marginTop: 4, whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{activeCustomer.remarks}</div></div>}
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8, marginTop: 14 }}>
                   <div style={{ background: "#fff", borderRadius: 9, padding: 10, border:"1px solid #e3eae5" }}><div style={{ fontSize: 10.5, color: INK_SOFT }}>Rented till now</div><strong>{customerSummary.loading ? "…" : customerSummary.rentalCount}</strong></div>
                   <div style={{ background: "#fff", borderRadius: 9, padding: 10, border:"1px solid #e3eae5" }}><div style={{ fontSize: 10.5, color: INK_SOFT }}>Current balance</div><strong>{customerSummary.loading ? "…" : `₹${Math.abs(Number(customerSummary.balance || 0)).toLocaleString("en-IN")} ${customerSummary.balance > 0 ? "due" : customerSummary.balance < 0 ? "credit" : ""}`}</strong></div>

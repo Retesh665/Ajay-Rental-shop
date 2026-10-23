@@ -71,6 +71,7 @@ export async function createCustomer(input, userId) {
       custom_profession: input.profession === "Other" ? input.custom_profession?.trim() : null,
       village: input.village || null,
       address: input.address || null,
+      remarks: input.remarks?.trim() || null,
       photo_url: input.photo_url || null,
       id_proof_front_url: input.id_proof_front_url || null,
       id_proof_back_url: input.id_proof_back_url || null,
@@ -823,6 +824,19 @@ export async function syncOfflineCustomerDirectory() {
   return rows.length;
 }
 
+// The balance view was created before later customer columns (such as remarks).
+// Read the authoritative customer row directly, and attach only its ledger balance.
+// This also avoids downloading every customer whenever one profile is opened.
+export async function getCustomerProfile(customerId) {
+  const [customerResult, balanceResult] = await Promise.all([
+    supabase.from("customers").select("*").eq("id", customerId).single(),
+    supabase.from("customers_with_balance").select("balance").eq("id", customerId).maybeSingle(),
+  ]);
+  if (customerResult.error) throw customerResult.error;
+  if (balanceResult.error) throw balanceResult.error;
+  return { ...customerResult.data, balance: Number(balanceResult.data?.balance || 0) };
+}
+
 export async function listCustomersWithBalance(query) {
   let q = supabase.from("customers_with_balance").select("*").order("name");
   if (query?.trim()) {
@@ -1035,22 +1049,27 @@ export async function getDashboardStats({ fromUTC, toUTC }) {
   const rentCounts = {};
   (itemsInRange || []).forEach((i) => { rentCounts[i.product_id] = (rentCounts[i.product_id] || 0) + 1; });
 
-  const topProducts = allProducts
-    .map((p) => {
-      const pm = allMachines.filter((m) => m.product_id === p.id);
-      const total = pm.length;
-      const rentedNow = pm.filter((m) => m.status === "rented").length;
-      return { product: p.name, timesRented: rentCounts[p.id] || 0, total, rentedNow, availableNow: total - rentedNow };
-    })
+  // Build machine counts once instead of filtering the full machine list
+  // twice for every product. This is O(machines + products), not O(machines * products).
+  const machineCounts = new Map();
+  for (const machine of allMachines) {
+    const counts = machineCounts.get(machine.product_id) || { total: 0, rentedNow: 0 };
+    counts.total += 1;
+    if (machine.status === "rented") counts.rentedNow += 1;
+    machineCounts.set(machine.product_id, counts);
+  }
+  const productAvailability = allProducts.map(p => {
+    const counts = machineCounts.get(p.id) || { total: 0, rentedNow: 0 };
+    return {
+      product: p.name, timesRented: rentCounts[p.id] || 0,
+      total: counts.total, rentedNow: counts.rentedNow,
+      availableNow: counts.total - counts.rentedNow,
+    };
+  });
+  const topProducts = [...productAvailability]
     .sort((a, b) => b.timesRented - a.timesRented)
     .slice(0, 5);
-
-  const lowAvailability = allProducts
-    .map((p) => {
-      const pm = allMachines.filter((m) => m.product_id === p.id);
-      return { product: p.name, availableNow: pm.length - pm.filter((m) => m.status === "rented").length, total: pm.length };
-    })
-    .filter((p) => p.total > 0 && p.availableNow === 0);
+  const lowAvailability = productAvailability.filter(p => p.total > 0 && p.availableNow === 0);
 
   const byCustomer = {};
   activeItems.forEach((item) => {

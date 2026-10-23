@@ -66,7 +66,7 @@ function dueLabel(dueDateISO) {
   const diffDays = Math.round((due - now) / (1000 * 60 * 60 * 24));
   if (diffDays < 0) return { label: `${Math.abs(diffDays)}d overdue`, tone: "red" };
   if (diffDays === 0) return { label: "due today", tone: "amber" };
-  if (diffDays === 1) return { label: "due tomorrow", tone: "amber" };
+  if (diffDays === 1) return null; // Only hide the tomorrow badge; preserve other statuses.
   return { label: `due in ${diffDays}d`, tone: "forest" };
 }
 
@@ -188,14 +188,14 @@ export default function Dashboard({onCustomerAction}) {
               {stats.activeCustomerList.length === 0 && <div style={{ padding: 24, textAlign: "center", fontSize: 13, color: INK_SOFT }}>No active rentals right now.</div>}
               {stats.activeCustomerList.map((c, i) => {
                 const d = dueLabel(c.dueDate);
-                const toneStyle = { red: [RED_BG, RED], amber: [AMBER_BG, AMBER], forest: [FOREST_BG, FOREST_DARK] }[d.tone];
+                const toneStyle = d ? { red: [RED_BG, RED], amber: [AMBER_BG, AMBER], forest: [FOREST_BG, FOREST_DARK] }[d.tone] : null;
                 return (
                   <button type="button" key={c.id} onClick={()=>setActionCustomer(c)} style={{ width:"100%",textAlign:"left",background:CARD,border:"none",cursor:"pointer",display: "flex", justifyContent: "space-between", alignItems: "center", padding: "13px 18px", borderTop: i === 0 ? "none" : `1px solid ${LINE}` }}>
                     <div>
                       <div style={{ fontSize: 14, fontWeight: 600, color: INK }}>{c.name}</div>
                       <div style={{ fontSize: 12, color: INK_SOFT, marginTop: 2 }}>{c.items.join(", ")} · <span style={{ fontFamily: "monospace" }}>{c.mobile}</span></div>
                     </div>
-                    <span style={{ fontSize: 11.5, fontWeight: 600, padding: "5px 10px", borderRadius: 6, background: toneStyle[0], color: toneStyle[1] }}>{d.label}</span>
+                    {d && <span style={{ fontSize: 11.5, fontWeight: 600, padding: "5px 10px", borderRadius: 6, background: toneStyle[0], color: toneStyle[1] }}>{d.label}</span>}
                   </button>
                 );
               })}

@@ -6,7 +6,7 @@ import {
   Pencil, Tag, X, Check, ArrowLeftRight, PlusCircle, ChevronRight, SlidersHorizontal, Flag, Phone, CreditCard, FileText,
 } from "lucide-react";
 import {
-  listCustomersWithBalance, createCustomer, updateCustomer, getCustomerTransactions,
+  listCustomersWithBalance, getCustomerProfile, createCustomer, updateCustomer, getCustomerTransactions,
   getCustomerOrders, getCustomerEvents, setCustomerFlag, correctTransaction,
 } from "../lib/api.js";
 import { isValidMobile, isoDateIST, hhmmIST, toIndianDate, to12Hour } from "../lib/dates.js";
@@ -71,7 +71,7 @@ function SectionLabel({ children }) {
   return <div style={{ fontSize: 12, fontWeight: 700, color: INK_SOFT, letterSpacing: 0.6, textTransform: "uppercase", marginBottom: 10, marginTop: 22 }}>{children}</div>;
 }
 
-const emptyEdit = { name: "", mobile: "", additionalMobile: "", profession: "", customProfession: "", village: "", address: "", notes: "", referredByName: "", referredByMobile: "", referredByAddress: "" };
+const emptyEdit = { name: "", mobile: "", additionalMobile: "", profession: "", customProfession: "", village: "", address: "", remarks: "", notes: "", referredByName: "", referredByMobile: "", referredByAddress: "" };
 
 export default function CustomerDatabase({customerContext}) {
   const [customers, setCustomers] = useState([]);
@@ -114,18 +114,26 @@ export default function CustomerDatabase({customerContext}) {
   const [correctionReason, setCorrectionReason] = useState("");
   const [correctionNotice, setCorrectionNotice] = useState(null);
 
+  // Ignore obsolete search responses (for example, slow network responses
+  // arriving after the staff has already typed a newer query).
+  const listRequestId = React.useRef(0);
   async function refreshList(q = query) {
+    const requestId = ++listRequestId.current;
     setLoading(true);
     setLoadError("");
     try {
-      setCustomers(await listCustomersWithBalance(q));
+      const rows = await listCustomersWithBalance(q);
+      if (requestId === listRequestId.current) setCustomers(rows);
     } catch (e) {
-      setLoadError(e.message || "Failed to load customers");
+      if (requestId === listRequestId.current) setLoadError(e.message || "Failed to load customers");
     } finally {
-      setLoading(false);
+      if (requestId === listRequestId.current) setLoading(false);
     }
   }
-  useEffect(() => { const h = setTimeout(() => refreshList(query), 250); return () => clearTimeout(h); }, [query]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    const h = setTimeout(() => refreshList(query), 250);
+    return () => { clearTimeout(h); listRequestId.current += 1; };
+  }, [query]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const visibleCustomers = useMemo(() => {
     if (balanceMin === "" && balanceMax === "") return customers;
@@ -157,13 +165,13 @@ export default function CustomerDatabase({customerContext}) {
     setEditing(false);
     setPhotoEditOpen(false);
     try {
-      const [all, o, t, events] = await Promise.all([
-        listCustomersWithBalance(""),
+      const [customer, o, t, events] = await Promise.all([
+        getCustomerProfile(id),
         getCustomerOrders(id),
         getCustomerTransactions(id),
         getCustomerEvents(id),
       ]);
-      setSelected(all.find((x) => x.id === id) || customers.find((x) => x.id === id));
+      setSelected(customer);
       setOrders(o);
       setExpandedRentals(new Set(o.length ? [o[0].id] : []));
       setTransactions(t);
@@ -209,7 +217,7 @@ export default function CustomerDatabase({customerContext}) {
     setEditForm({
       name: selected.name, mobile: selected.mobile, additionalMobile: selected.additional_mobile || "",
       profession: selected.profession || "", customProfession: selected.custom_profession || "",
-      village: selected.village || "", address: selected.address || "", notes: selected.notes || "",
+      village: selected.village || "", address: selected.address || "", remarks: selected.remarks || "", notes: selected.notes || "",
       referredByName: selected.referred_by_name || "", referredByMobile: selected.referred_by_mobile || "", referredByAddress: selected.referred_by_address || "",
     });
     setEditError("");
@@ -229,7 +237,7 @@ export default function CustomerDatabase({customerContext}) {
         additional_mobile: editForm.additionalMobile.trim() || null,
         profession: editForm.profession || null,
         custom_profession: editForm.profession === "Other" ? editForm.customProfession.trim() : null,
-        village: editForm.village.trim() || null, address: editForm.address.trim() || null, notes: editForm.notes.trim() || null,
+        village: editForm.village.trim() || null, address: editForm.address.trim() || null, remarks: editForm.remarks.trim() || null, notes: editForm.notes.trim() || null,
         referred_by_name: editForm.referredByName.trim() || null,
         referred_by_mobile: editForm.referredByMobile.trim() || null,
         referred_by_address: editForm.referredByAddress.trim() || null,
@@ -487,6 +495,7 @@ export default function CustomerDatabase({customerContext}) {
               <div><MapPin size={13}/> {[selected.address,selected.village].filter(Boolean).join(", ") || "No address"}</div>
               <div>{selected.profession === "Other" ? selected.custom_profession : selected.profession || "No profession"}</div>
             </div>
+            {selected.remarks && <div style={{ marginTop: 12, background: PAPER, padding: 12, borderRadius: 8, color: INK_SOFT, fontSize: 13 }}><strong style={{ color: INK }}>Remarks</strong><div style={{ marginTop: 4, whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{selected.remarks}</div></div>}
             {selected.notes && <div style={{ marginTop: 12, background: PAPER, padding: 12, borderRadius: 8, color: INK_SOFT, fontSize: 13 }}><FileText size={13}/> {selected.notes}</div>}
           </>}
         </div>
@@ -546,7 +555,8 @@ export default function CustomerDatabase({customerContext}) {
                 {editForm.profession === "Other" && <div><label style={{ fontSize: 11.5, color: INK_SOFT }}>Specify</label><input style={inputStyle} value={editForm.customProfession} onChange={(e) => setEditForm({ ...editForm, customProfession: e.target.value })} /></div>}
                 <div><label style={{ fontSize: 11.5, color: INK_SOFT }}>Village</label><input style={inputStyle} value={editForm.village} onChange={(e) => setEditForm({ ...editForm, village: e.target.value })} /></div>
               </div>
-              <div style={{ marginTop: 10 }}><label style={{ fontSize: 11.5, color: INK_SOFT }}>Address</label><textarea rows={2} style={{ ...inputStyle, resize: "vertical" }} value={editForm.address} onChange={(e) => setEditForm({ ...editForm, address: e.target.value })} /></div>
+              <div style={{ marginTop: 10 }}><label style={{ fontSize: 11.5, color: INK_SOFT }}>Address</label><textarea rows={2} style={inputStyle} value={editForm.address} onChange={(e) => setEditForm({ ...editForm, address: e.target.value })} /></div>
+              <div style={{ marginTop: 10 }}><label style={{ fontSize: 11.5, color: INK_SOFT }}>Remarks</label><textarea rows={2} style={inputStyle} value={editForm.remarks} onChange={(e) => setEditForm({ ...editForm, remarks: e.target.value })} /></div>
               <div style={{ marginTop: 10 }}><label style={{ fontSize: 11.5, color: INK_SOFT }}>Notes</label><textarea rows={2} style={{ ...inputStyle, resize: "vertical" }} value={editForm.notes} onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })} /></div>
 
               <SectionLabel>Referred by</SectionLabel>
