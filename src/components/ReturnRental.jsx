@@ -8,6 +8,7 @@ import { useAuth } from "../context/AuthContext.jsx";
 import { readReturnDraft, listReturnDrafts, saveReturnDraft, deleteReturnDraft } from "../lib/offlineReturnDrafts.js";
 import { autoReturnDiscount } from "../lib/autoDiscount.js";
 import { returnEventCharges } from "../lib/returnTotals.js";
+import { CUSTOMER_FLAGS, getCustomerFlagMeta, normalizeCustomerFlag } from "../lib/customerFlags.js";
 
 const INK = "#1C2333";
 const INK_SOFT = "#4A5268";
@@ -608,8 +609,8 @@ export default function ReturnRental({customerContext}) {
               <div style={{ background: CARD, border: `1px solid ${LINE}`, borderRadius: 12, padding: 16, marginBottom: 20, textAlign: "left" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, marginBottom: 10 }}>
                   <div style={{ fontSize: 13.5, fontWeight: 600, color: INK }}>{completed.customer.name}</div>
-                  <select aria-label="Customer flag" title="Change customer flag" value={completed.customer.flag || "green"} onChange={async (e) => { const flag = e.target.value; try { await updateCustomer(completed.customer.id, { flag }); setCompleted(prev => ({ ...prev, customer: { ...prev.customer, flag } })); } catch (err) { alert(err.message || "Could not save flag"); } }} style={{ fontSize: 12, borderRadius: 7, padding: "6px 8px", background: ({ green: FOREST_BG, yellow: AMBER_BG, red: RED_BG })[completed.customer.flag || "green"], color: INK, border: `1px solid ${LINE}` }}>
-                    <option value="green">⚑ Green — Good standing</option><option value="yellow">⚑ Yellow — Watch</option><option value="red">⚑ Red — Risk</option>
+                  <select aria-label="Customer flag" title="Change customer flag" value={normalizeCustomerFlag(completed.customer.flag)} onChange={async (e) => { const flag = normalizeCustomerFlag(e.target.value); try { await updateCustomer(completed.customer.id, { flag }); setCompleted(prev => ({ ...prev, customer: { ...prev.customer, flag } })); } catch (err) { alert(err.message || "Could not save flag"); } }} style={{ fontSize: 12, borderRadius: 7, padding: "6px 8px", background: getCustomerFlagMeta(completed.customer.flag).bg, color: getCustomerFlagMeta(completed.customer.flag).fg, border: `1px solid ${LINE}` }}>
+                    {Object.entries(CUSTOMER_FLAGS).map(([value, meta]) => <option key={value} value={value}>{meta.emoji} {meta.label}</option>)}
                   </select>
                 </div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>

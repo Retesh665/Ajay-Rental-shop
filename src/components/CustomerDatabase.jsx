@@ -13,6 +13,7 @@ import { isValidMobile, isoDateIST, hhmmIST, toIndianDate, to12Hour } from "../l
 import { billableDays } from "../lib/billing.js";
 import PhotoCapture from "./PhotoCapture.jsx";
 import PrivatePhoto from "./PrivatePhoto.jsx";
+import { CUSTOMER_FLAGS, getCustomerFlagMeta, normalizeCustomerFlag } from "../lib/customerFlags.js";
 
 const INK = "#1C2333";
 const INK_SOFT = "#4A5268";
@@ -33,11 +34,7 @@ const PROFESSIONS = [
   "Machinery Rental Partner", "Social Organization", "Government Department", "Demolition Worker", "Other",
 ]; // §7 — must match Start Rental exactly
 
-const FLAG_META = {
-  green: { label: "Good standing", bg: FOREST_BG, fg: FOREST_DARK },
-  yellow: { label: "Watch", bg: AMBER_BG, fg: AMBER },
-  red: { label: "Risk", bg: RED_BG, fg: RED },
-};
+const FLAG_META = CUSTOMER_FLAGS;
 
 const TYPE_META = {
   RENT_CHARGE: { sign: "+", label: "Rental charge" },
@@ -246,9 +243,10 @@ export default function CustomerDatabase({customerContext}) {
 
   async function setFlag(color) {
     try {
-      await setCustomerFlag(selected.id, color);
-      setSelected((prev) => ({ ...prev, flag: color }));
-      setCustomers((prev) => prev.map((c) => (c.id === selected.id ? { ...c, flag: color } : c)));
+      const normalized = normalizeCustomerFlag(color);
+      await setCustomerFlag(selected.id, normalized);
+      setSelected((prev) => ({ ...prev, flag: normalized }));
+      setCustomers((prev) => prev.map((c) => (c.id === selected.id ? { ...c, flag: normalized } : c)));
     } catch (e) {
       setLoadError(e.message);
     } finally {
@@ -420,7 +418,7 @@ export default function CustomerDatabase({customerContext}) {
             {loading && <div style={{ padding: 24, textAlign: "center", fontSize: 13, color: INK_SOFT }}>Loading…</div>}
             {!loading && visibleCustomers.length === 0 && <div style={{ padding: 24, textAlign: "center", fontSize: 13, color: INK_SOFT }}>No customers match{balanceFilterActive ? " these filters" : " that search"}.</div>}
             {!loading && visibleCustomers.slice((listPage-1)*15,listPage*15).map((c, i) => {
-              const flag = FLAG_META[c.flag];
+              const flag = getCustomerFlagMeta(c.flag);
               return (
                 <div key={c.id} onClick={() => openCustomer(c.id)} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 18px", borderTop: i === 0 ? "none" : `1px solid ${LINE}`, cursor: "pointer" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
@@ -452,7 +450,7 @@ export default function CustomerDatabase({customerContext}) {
   }
 
   // ---------- PROFILE VIEW ----------
-  const flag = FLAG_META[selected.flag] || FLAG_META.green;
+  const flag = getCustomerFlagMeta(selected.flag);
   return (
     <div style={{ fontFamily: "'Inter', system-ui, sans-serif", background: PAPER, minHeight: 600, padding: "28px 20px" }}>
       <div style={{ maxWidth: 720, margin: "0 auto" }}>
@@ -473,7 +471,7 @@ export default function CustomerDatabase({customerContext}) {
           </div>
           <div style={{ position: "relative", marginTop: 14, marginBottom: 16 }}>
             <button onClick={() => setFlagOpen(v => !v)} style={{ background: flag.bg, color: flag.fg, border: "1px solid #d5e6d9", padding: "7px 12px", borderRadius: 9, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}><Flag size={13}/>{flag.label} <Pencil size={11}/></button>
-            {flagOpen && <div style={{ position: "absolute", top: 36, left: 0, background: "white", border: `1px solid ${LINE}`, borderRadius: 8, padding: 5, zIndex: 10 }}>{Object.entries(FLAG_META).map(([key,m]) => <button key={key} onClick={() => setFlag(key)} style={{ display: "flex", gap: 5, alignItems: "center", width: "100%", border: 0, padding: 8, background: m.bg, color: m.fg, cursor: "pointer" }}><Flag size={12}/>{m.label}</button>)}</div>}
+            {flagOpen && <div style={{ position: "absolute", top: 36, left: 0, background: "white", border: `1px solid ${LINE}`, borderRadius: 8, padding: 5, zIndex: 10 }}>{Object.entries(FLAG_META).map(([key,m]) => <button key={key} onClick={() => setFlag(key)} style={{ display: "flex", gap: 5, alignItems: "center", width: "100%", border: 0, padding: 8, background: m.bg, color: m.fg, cursor: "pointer" }}><span aria-hidden="true">{m.emoji}</span>{m.label}</button>)}</div>}
           </div>
           {photoEditOpen && <div style={{ marginBottom: 12, padding: 12, border: `1px solid ${LINE}`, borderRadius: 9 }}><PhotoCapture label="Profile photo — view, upload or replace" value={selected.photo_url} onChange={url => savePhoto("photo_url", url)} /></div>}
           {tab === "overview" && !editing && <>

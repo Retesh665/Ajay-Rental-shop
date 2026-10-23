@@ -7,6 +7,7 @@ import PhotoCapture from "./PhotoCapture.jsx";
 import { readRentalDraft, listRentalDrafts, saveRentalDraft, deleteRentalDraft, saveStartRentalDraftLocked, machineDraftConflicts } from "../lib/offlineDrafts.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import Pager from "./Pager.jsx";
+import { CUSTOMER_FLAGS, getCustomerFlagMeta, normalizeCustomerFlag } from "../lib/customerFlags.js";
 
 const INK = "#1C2333";
 const INK_SOFT = "#4A5268";
@@ -586,7 +587,7 @@ export default function StartRental({customerContext}) {
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8, marginTop: 14 }}>
                   <div style={{ background: "#fff", borderRadius: 9, padding: 10, border:"1px solid #e3eae5" }}><div style={{ fontSize: 10.5, color: INK_SOFT }}>Rented till now</div><strong>{customerSummary.loading ? "…" : customerSummary.rentalCount}</strong></div>
                   <div style={{ background: "#fff", borderRadius: 9, padding: 10, border:"1px solid #e3eae5" }}><div style={{ fontSize: 10.5, color: INK_SOFT }}>Current balance</div><strong>{customerSummary.loading ? "…" : `₹${Math.abs(Number(customerSummary.balance || 0)).toLocaleString("en-IN")} ${customerSummary.balance > 0 ? "due" : customerSummary.balance < 0 ? "credit" : ""}`}</strong></div>
-                  <div style={{ background: "#fff", borderRadius: 9, padding: 10, border:"1px solid #e3eae5" }}><div style={{ fontSize: 10.5, color: INK_SOFT }}>Customer flag</div><select aria-label="Customer flag" value={activeCustomer.flag || "green"} onChange={async e => { const flag = e.target.value; try { await updateCustomer(activeCustomer.id, { flag }); setActiveCustomer(prev => ({ ...prev, flag })); } catch (err) { setLoadError(err.message); } }} style={{ maxWidth: "100%", border: `1px solid ${LINE}`, borderRadius: 6, padding: 4 }}><option value="green">🟢 Green — Good standing</option><option value="yellow">🟡 Yellow — Watch</option><option value="red">🔴 Red — Risk</option></select></div>
+                  <div style={{ background: "#fff", borderRadius: 9, padding: 10, border:"1px solid #e3eae5" }}><div style={{ fontSize: 10.5, color: INK_SOFT }}>Customer flag</div><select aria-label="Customer flag" value={normalizeCustomerFlag(activeCustomer.flag)} onChange={async e => { const flag = normalizeCustomerFlag(e.target.value); try { await updateCustomer(activeCustomer.id, { flag }); setActiveCustomer(prev => ({ ...prev, flag })); } catch (err) { setLoadError(err.message); } }} style={{ maxWidth: "100%", border: `1px solid ${LINE}`, borderRadius: 6, padding: 4, background: getCustomerFlagMeta(activeCustomer.flag).bg, color: getCustomerFlagMeta(activeCustomer.flag).fg }}><option value="green">🟢 Green</option><option value="amber">🟠 Amber</option><option value="red">🔴 Red</option><option value="gold">⭐ Gold</option></select></div>
                 </div>
                 <div style={{ marginTop: 14 }}>
                   <div style={{ fontSize: 11.5, color: INK_SOFT, fontWeight: 600, marginBottom: 6 }}>Last 3 rentals</div>

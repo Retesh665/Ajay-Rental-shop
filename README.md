@@ -39,3 +39,7 @@ Existing offline draft and cache modules are preserved.
 See `DEPLOYMENT.md`. Run `npm install`, `npm test`, and `npm run build`
 before deployment. Apply existing numbered SQL migrations in order if not yet
 applied. Keep `.env` secrets out of version control.
+
+### Customer flag update (four supported flags)
+
+Before deploying the four-flag UI, run `supabase/migrations/015_customer_flag_options.sql` in the Supabase SQL Editor. It safely updates the customer flag constraint to `green`, `amber`, `red`, and `gold`, keeps Green as the database default, and translates any legacy `yellow` values to `amber`. It does not delete customers or alter rental/payment data.

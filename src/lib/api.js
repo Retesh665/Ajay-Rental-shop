@@ -1,6 +1,7 @@
 import { readSnapshot, writeSnapshot, mergeSnapshot, localCustomerSearch, isNetworkFailure } from "./offlineCache.js";
 import { allocateReturnEventRevenue } from "./machineRevenue.js";
 import { supabase } from "./supabaseClient.js";
+import { isCustomerFlag, normalizeCustomerFlag } from "./customerFlags.js";
 import { istDateTimeToUTC, isValidMobile } from "./dates.js";
 import { billableDays } from "./billing.js";
 import { computeSettlement } from "./settlement.js";
@@ -110,7 +111,6 @@ export async function createCustomer(input, userId) {
 // capture, flag changes — which would otherwise spam the feed with a
 // history row every time someone taps a photo tile.
 export async function updateCustomer(id, patch, { logAsEdit = false, userId } = {}) {
-  if (Object.prototype.hasOwnProperty.call(patch, "flag")) patch = { ...patch, flag: normalizeCustomerFlag(patch.flag) };
   if (patch.mobile && !isValidMobile(patch.mobile)) throw new Error("Wrong number");
   if (patch.additional_mobile && !isValidMobile(patch.additional_mobile)) throw new Error("Wrong number");
   if (patch.mobile && patch.additional_mobile && patch.mobile === patch.additional_mobile) {
@@ -943,9 +943,9 @@ export async function getCustomerOrders(customerId) {
 
 export async function setCustomerFlag(customerId, flag) {
   const normalizedFlag = normalizeCustomerFlag(flag);
+  if (!isCustomerFlag(normalizedFlag)) throw new Error("Invalid customer flag");
   const { error } = await supabase.from("customers").update({ flag: normalizedFlag }).eq("id", customerId);
   if (error) throw error;
-  return normalizedFlag;
 }
 
 // §8 correction workflow: NEVER edit a stored transaction. Every fix is an
