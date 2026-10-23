@@ -261,33 +261,27 @@ export default function StartRental({customerContext}) {
   },[recentCustomers,recentPeriod,recentCustomStart,recentCustomEnd]);
   useEffect(()=>setRecentPage(1),[recentPeriod,recentCustomStart,recentCustomEnd]);
   useEffect(()=>setSearchPage(1),[query]);
-  // Debounce remote searches and ignore responses from superseded queries.
-  // Keep the same offline lookup and results; never let an older request replace newer input.
+  // Debounced-ish live customer search
   useEffect(() => {
-    let active = true;
     const q = query.trim();
-    if (!q) { setMatches([]); setSearching(false); return () => { active = false; }; }
+    if (!q) { setMatches([]); return; }
     setSearching(true);
     const handle = setTimeout(() => {
-      searchCustomers(q)
-        .then(rows => { if (active) { setMatches(rows); setLoadError(''); } })
-        .catch(e => { if (active) { setMatches([]); setLoadError(e.message); } })
-        .finally(() => { if (active) setSearching(false); });
+      searchCustomers(q).then((rows) => { setMatches(rows); setLoadError(''); }).catch((e) => { setMatches([]); setLoadError(e.message); }).finally(() => setSearching(false));
     }, 250);
-    return () => { active = false; clearTimeout(handle); };
+    return () => clearTimeout(handle);
   }, [query]);
 
   useEffect(() => {
-    let active = true;
-    if (newCustomer.referredBy.id) { setReferrerMatches([]); return () => { active = false; }; }
+    if (newCustomer.referredBy.id) { setReferrerMatches([]); return; }
     const nameQ = newCustomer.referredBy.name.trim();
     const mobileQ = newCustomer.referredBy.mobile.trim();
     const q = mobileQ || nameQ;
-    if (q.length < 2) { setReferrerMatches([]); return () => { active = false; }; }
+    if (q.length < 2) { setReferrerMatches([]); return; }
     const handle = setTimeout(() => {
-      searchCustomers(q).then(r => { if (active) setReferrerMatches(r.slice(0, 5)); }).catch(() => {});
+      searchCustomers(q).then((r) => setReferrerMatches(r.slice(0, 5))).catch(() => {});
     }, 250);
-    return () => { active = false; clearTimeout(handle); };
+    return () => clearTimeout(handle);
   }, [newCustomer.referredBy.name, newCustomer.referredBy.mobile, newCustomer.referredBy.id]);
 
   function resetAll() {
@@ -592,7 +586,7 @@ export default function StartRental({customerContext}) {
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8, marginTop: 14 }}>
                   <div style={{ background: "#fff", borderRadius: 9, padding: 10, border:"1px solid #e3eae5" }}><div style={{ fontSize: 10.5, color: INK_SOFT }}>Rented till now</div><strong>{customerSummary.loading ? "…" : customerSummary.rentalCount}</strong></div>
                   <div style={{ background: "#fff", borderRadius: 9, padding: 10, border:"1px solid #e3eae5" }}><div style={{ fontSize: 10.5, color: INK_SOFT }}>Current balance</div><strong>{customerSummary.loading ? "…" : `₹${Math.abs(Number(customerSummary.balance || 0)).toLocaleString("en-IN")} ${customerSummary.balance > 0 ? "due" : customerSummary.balance < 0 ? "credit" : ""}`}</strong></div>
-                  <div style={{ background: "#fff", borderRadius: 9, padding: 10, border:"1px solid #e3eae5" }}><div style={{ fontSize: 10.5, color: INK_SOFT }}>Customer flag</div><select aria-label="Customer flag" value={activeCustomer.flag || "green"} onChange={async e => { const flag = e.target.value; try { await updateCustomer(activeCustomer.id, { flag }); setActiveCustomer(prev => ({ ...prev, flag })); } catch (err) { setLoadError(err.message); } }} style={{ maxWidth: "100%", border: `1px solid ${LINE}`, borderRadius: 6, padding: 4 }}><option value="green">🟢 Green</option><option value="amber">🟡 Amber</option><option value="red">🔴 Red</option><option value="gold">⭐ Gold</option></select></div>
+                  <div style={{ background: "#fff", borderRadius: 9, padding: 10, border:"1px solid #e3eae5" }}><div style={{ fontSize: 10.5, color: INK_SOFT }}>Customer flag</div><select aria-label="Customer flag" value={activeCustomer.flag || "green"} onChange={async e => { const flag = e.target.value; try { await updateCustomer(activeCustomer.id, { flag }); setActiveCustomer(prev => ({ ...prev, flag })); } catch (err) { setLoadError(err.message); } }} style={{ maxWidth: "100%", border: `1px solid ${LINE}`, borderRadius: 6, padding: 4 }}><option value="green">🟢 Green — Good standing</option><option value="yellow">🟡 Yellow — Watch</option><option value="red">🔴 Red — Risk</option></select></div>
                 </div>
                 <div style={{ marginTop: 14 }}>
                   <div style={{ fontSize: 11.5, color: INK_SOFT, fontWeight: 600, marginBottom: 6 }}>Last 3 rentals</div>

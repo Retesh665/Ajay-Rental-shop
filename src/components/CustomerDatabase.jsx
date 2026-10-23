@@ -114,26 +114,18 @@ export default function CustomerDatabase({customerContext}) {
   const [correctionReason, setCorrectionReason] = useState("");
   const [correctionNotice, setCorrectionNotice] = useState(null);
 
-  // Ignore obsolete search responses (for example, slow network responses
-  // arriving after the staff has already typed a newer query).
-  const listRequestId = React.useRef(0);
   async function refreshList(q = query) {
-    const requestId = ++listRequestId.current;
     setLoading(true);
     setLoadError("");
     try {
-      const rows = await listCustomersWithBalance(q);
-      if (requestId === listRequestId.current) setCustomers(rows);
+      setCustomers(await listCustomersWithBalance(q));
     } catch (e) {
-      if (requestId === listRequestId.current) setLoadError(e.message || "Failed to load customers");
+      setLoadError(e.message || "Failed to load customers");
     } finally {
-      if (requestId === listRequestId.current) setLoading(false);
+      setLoading(false);
     }
   }
-  useEffect(() => {
-    const h = setTimeout(() => refreshList(query), 250);
-    return () => { clearTimeout(h); listRequestId.current += 1; };
-  }, [query]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { const h = setTimeout(() => refreshList(query), 250); return () => clearTimeout(h); }, [query]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const visibleCustomers = useMemo(() => {
     if (balanceMin === "" && balanceMax === "") return customers;

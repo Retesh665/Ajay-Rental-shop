@@ -608,8 +608,8 @@ export default function ReturnRental({customerContext}) {
               <div style={{ background: CARD, border: `1px solid ${LINE}`, borderRadius: 12, padding: 16, marginBottom: 20, textAlign: "left" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, marginBottom: 10 }}>
                   <div style={{ fontSize: 13.5, fontWeight: 600, color: INK }}>{completed.customer.name}</div>
-                  <select aria-label="Customer flag" title="Change customer flag" value={completed.customer.flag || "green"} onChange={async (e) => { const flag = e.target.value; try { await updateCustomer(completed.customer.id, { flag }); setCompleted(prev => ({ ...prev, customer: { ...prev.customer, flag } })); } catch (err) { alert(err.message || "Could not save flag"); } }} style={{ fontSize: 12, borderRadius: 7, padding: "6px 8px", background: ({ green: FOREST_BG, amber: AMBER_BG, red: RED_BG, gold: "#FFF2C9" })[completed.customer.flag || "green"], color: INK, border: `1px solid ${LINE}` }}>
-                    <option value="green">⚑ Green</option><option value="amber">⚑ Amber</option><option value="red">⚑ Red</option><option value="gold">⚑ Gold</option>
+                  <select aria-label="Customer flag" title="Change customer flag" value={completed.customer.flag || "green"} onChange={async (e) => { const flag = e.target.value; try { await updateCustomer(completed.customer.id, { flag }); setCompleted(prev => ({ ...prev, customer: { ...prev.customer, flag } })); } catch (err) { alert(err.message || "Could not save flag"); } }} style={{ fontSize: 12, borderRadius: 7, padding: "6px 8px", background: ({ green: FOREST_BG, yellow: AMBER_BG, red: RED_BG })[completed.customer.flag || "green"], color: INK, border: `1px solid ${LINE}` }}>
+                    <option value="green">⚑ Green — Good standing</option><option value="yellow">⚑ Yellow — Watch</option><option value="red">⚑ Red — Risk</option>
                   </select>
                 </div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>

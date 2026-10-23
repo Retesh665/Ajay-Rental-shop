@@ -110,6 +110,7 @@ export async function createCustomer(input, userId) {
 // capture, flag changes — which would otherwise spam the feed with a
 // history row every time someone taps a photo tile.
 export async function updateCustomer(id, patch, { logAsEdit = false, userId } = {}) {
+  if (Object.prototype.hasOwnProperty.call(patch, "flag")) patch = { ...patch, flag: normalizeCustomerFlag(patch.flag) };
   if (patch.mobile && !isValidMobile(patch.mobile)) throw new Error("Wrong number");
   if (patch.additional_mobile && !isValidMobile(patch.additional_mobile)) throw new Error("Wrong number");
   if (patch.mobile && patch.additional_mobile && patch.mobile === patch.additional_mobile) {
@@ -941,8 +942,10 @@ export async function getCustomerOrders(customerId) {
 }
 
 export async function setCustomerFlag(customerId, flag) {
-  const { error } = await supabase.from("customers").update({ flag }).eq("id", customerId);
+  const normalizedFlag = normalizeCustomerFlag(flag);
+  const { error } = await supabase.from("customers").update({ flag: normalizedFlag }).eq("id", customerId);
   if (error) throw error;
+  return normalizedFlag;
 }
 
 // §8 correction workflow: NEVER edit a stored transaction. Every fix is an
@@ -1049,27 +1052,22 @@ export async function getDashboardStats({ fromUTC, toUTC }) {
   const rentCounts = {};
   (itemsInRange || []).forEach((i) => { rentCounts[i.product_id] = (rentCounts[i.product_id] || 0) + 1; });
 
-  // Build machine counts once instead of filtering the full machine list
-  // twice for every product. This is O(machines + products), not O(machines * products).
-  const machineCounts = new Map();
-  for (const machine of allMachines) {
-    const counts = machineCounts.get(machine.product_id) || { total: 0, rentedNow: 0 };
-    counts.total += 1;
-    if (machine.status === "rented") counts.rentedNow += 1;
-    machineCounts.set(machine.product_id, counts);
-  }
-  const productAvailability = allProducts.map(p => {
-    const counts = machineCounts.get(p.id) || { total: 0, rentedNow: 0 };
-    return {
-      product: p.name, timesRented: rentCounts[p.id] || 0,
-      total: counts.total, rentedNow: counts.rentedNow,
-      availableNow: counts.total - counts.rentedNow,
-    };
-  });
-  const topProducts = [...productAvailability]
+  const topProducts = allProducts
+    .map((p) => {
+      const pm = allMachines.filter((m) => m.product_id === p.id);
+      const total = pm.length;
+      const rentedNow = pm.filter((m) => m.status === "rented").length;
+      return { product: p.name, timesRented: rentCounts[p.id] || 0, total, rentedNow, availableNow: total - rentedNow };
+    })
     .sort((a, b) => b.timesRented - a.timesRented)
     .slice(0, 5);
-  const lowAvailability = productAvailability.filter(p => p.total > 0 && p.availableNow === 0);
+
+  const lowAvailability = allProducts
+    .map((p) => {
+      const pm = allMachines.filter((m) => m.product_id === p.id);
+      return { product: p.name, availableNow: pm.length - pm.filter((m) => m.status === "rented").length, total: pm.length };
+    })
+    .filter((p) => p.total > 0 && p.availableNow === 0);
 
   const byCustomer = {};
   activeItems.forEach((item) => {
